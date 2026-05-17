@@ -47,7 +47,7 @@ export default function FormulesPage() {
       fetch("/api/admin/settings", { headers: { "x-admin-token": token } }).then(r => r.json()),
     ]);
     setFormulas(f);
-    setFutsalPrice(s.futsal_price_per_player ?? "8");
+    setFutsalPrice(s.futsal_court_price ?? s.futsal_price_per_player ?? "110");
     setLoading(false);
   }, [token]);
 
@@ -58,7 +58,7 @@ export default function FormulesPage() {
     await fetch("/api/admin/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token! },
-      body: JSON.stringify({ futsal_price_per_player: futsalPrice }),
+      body: JSON.stringify({ futsal_court_price: futsalPrice }),
     });
     setSaving(false);
     setFutsalSaved(true);
@@ -138,8 +138,8 @@ export default function FormulesPage() {
               <Euro className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="font-bold text-blue-900">Prix Futsal par joueur</p>
-              <p className="text-blue-600 text-sm">Appliqué à toutes les sessions futsal</p>
+              <p className="font-bold text-blue-900">Prix du terrain futsal (par heure)</p>
+              <p className="text-blue-600 text-sm">Divisé par le nombre de joueurs automatiquement</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -150,7 +150,7 @@ export default function FormulesPage() {
               onChange={e => setFutsalPrice(e.target.value)}
               className="w-24 text-center font-bold text-lg"
             />
-            <span className="text-blue-700 font-semibold">€ / joueur</span>
+            <span className="text-blue-700 font-semibold">€ / heure</span>
             <Button onClick={saveFutsalPrice} disabled={saving} size="sm" className="gap-2 bg-blue-600 hover:bg-blue-700">
               {futsalSaved ? <><Check className="w-4 h-4" /> Sauvé</> : <><Save className="w-4 h-4" /> Sauvegarder</>}
             </Button>

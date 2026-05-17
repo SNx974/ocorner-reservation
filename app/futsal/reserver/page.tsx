@@ -107,7 +107,7 @@ export default function FutsalReserverPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [result, setResult] = useState<{ reservation: Record<string, unknown>; clientSecret?: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [pricePerPlayer, setPricePerPlayer] = useState(8);
+  const [courtPrice, setCourtPrice] = useState(110);
   const [minPlayers, setMinPlayers] = useState(10);
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
@@ -117,7 +117,8 @@ export default function FutsalReserverPage() {
 
   useEffect(() => {
     fetch("/api/futsal/settings").then(r => r.json()).then((data: Record<string, string>) => {
-      if (data.futsal_price_per_player) setPricePerPlayer(parseFloat(data.futsal_price_per_player));
+      const cp = data.futsal_court_price ?? data.futsal_price_per_player;
+      if (cp) setCourtPrice(parseFloat(cp));
       if (data.futsal_min_players) setMinPlayers(parseInt(data.futsal_min_players));
     }).catch(() => {});
   }, []);
@@ -132,7 +133,8 @@ export default function FutsalReserverPage() {
   }, [date]);
 
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
-  const baseTotal = pricePerPlayer * playerCount;
+  const pricePerPlayer = courtPrice / playerCount; // Prix par joueur = terrain / nb joueurs
+  const baseTotal = courtPrice; // Le terrain coûte toujours courtPrice, peu importe le nb de joueurs
   const total = promoResult ? promoResult.finalTotal : baseTotal;
   const depositAmount = Math.max(30, total * 0.3);
 
@@ -370,8 +372,8 @@ export default function FutsalReserverPage() {
                     +
                   </button>
                   <div>
-                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(baseTotal)}</p>
-                    <p className="text-xs text-gray-400">{formatPrice(pricePerPlayer)} × {playerCount}</p>
+                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(courtPrice)}</p>
+                    <p className="text-xs text-gray-400">terrain fixe · {formatPrice(pricePerPlayer)}/joueur</p>
                   </div>
                 </div>
                 {errors.players && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.players}</p>}
@@ -469,8 +471,12 @@ export default function FutsalReserverPage() {
               {/* Price summary */}
               <div className="bg-blue-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{playerCount} joueurs × {formatPrice(pricePerPlayer)}</span>
-                  <span className="font-semibold">{formatPrice(baseTotal)}</span>
+                  <span className="text-gray-500">Location du terrain (1h)</span>
+                  <span className="font-semibold">{formatPrice(courtPrice)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>{formatPrice(courtPrice)} ÷ {playerCount} joueurs</span>
+                  <span>= {formatPrice(pricePerPlayer)} / joueur</span>
                 </div>
                 {promoResult && (
                   <div className="flex justify-between text-emerald-700">
@@ -479,10 +485,10 @@ export default function FutsalReserverPage() {
                   </div>
                 )}
                 <div className="flex justify-between border-t pt-2 font-bold text-lg">
-                  <span>Total</span>
+                  <span>Total terrain</span>
                   <span className="text-blue-700">{formatPrice(total)}</span>
                 </div>
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-blue-600 font-medium">
                   <span>Part par joueur</span>
                   <span>{formatPrice(total / playerCount)}</span>
                 </div>

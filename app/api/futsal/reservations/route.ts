@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const getSetting = (key: string, fallback: string) =>
       settings.find((s) => s.key === key)?.value ?? fallback;
 
-    const pricePerPlayer = parseFloat(getSetting("futsal_price_per_player", "8"));
+    const courtPrice = parseFloat(getSetting("futsal_court_price", getSetting("futsal_price_per_player", "110")));
     const minPlayers = parseInt(getSetting("futsal_min_players", "10"));
     const depositPct = parseFloat(getSetting("futsal_deposit_percentage", "30"));
     const depositMin = parseFloat(getSetting("futsal_deposit_min_amount", "30"));
@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ce terrain est déjà réservé pour ce créneau" }, { status: 409 });
     }
 
-    const basePrice = pricePerPlayer * data.playerCount;
+    // Prix fixe du terrain divisé par le nombre de joueurs
+    const basePrice = courtPrice;
     let appliedDiscount = 0;
     let validatedPromoId: string | undefined;
 
