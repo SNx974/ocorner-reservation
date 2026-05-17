@@ -31,7 +31,8 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# public/ may not exist — create it to avoid COPY errors
+RUN mkdir -p ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package*.json ./
 
