@@ -32,7 +32,7 @@ export default function FormulesPage() {
   const [formulas, setFormulas] = useState<Formula[]>([]);
   const [loading, setLoading] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<Formula & { pricePerChild: string; minChildren: string }>>({});
+  const [editData, setEditData] = useState<Record<string, unknown>>({});
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ ...emptyForm });
   const [saving, setSaving] = useState(false);
@@ -241,13 +241,13 @@ export default function FormulesPage() {
                       <div className="flex items-center gap-2">
                         <Euro className="w-4 h-4 text-gray-400" />
                         <Input type="number" defaultValue={f.pricePerChild} className="w-24"
-                          onChange={e => setEditData(d => ({ ...d, pricePerChild: e.target.value as unknown as number }))} />
+                          onChange={e => setEditData(d => ({ ...d, pricePerChild: e.target.value }))} />
                         <span className="text-sm text-gray-500">€/enfant</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-gray-400" />
                         <Input type="number" defaultValue={f.minChildren} className="w-20"
-                          onChange={e => setEditData(d => ({ ...d, minChildren: e.target.value as unknown as number }))} />
+                          onChange={e => setEditData(d => ({ ...d, minChildren: e.target.value }))} />
                         <span className="text-sm text-gray-500">min</span>
                       </div>
                     </div>
