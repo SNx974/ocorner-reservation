@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.reservation.findMany({
       where: { date: { gte: todayStart, lte: todayEnd } },
-      include: { formula: true, timeSlot: true },
+      include: { formula: true, timeSlot: true, futsalTimeSlot: true },
       orderBy: { date: "asc" },
     }),
     prisma.reservation.findMany({

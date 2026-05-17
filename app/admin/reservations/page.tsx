@@ -20,8 +20,12 @@ interface Reservation {
   childrenCount: number; paymentType: string; depositAmount: number;
   depositPaid: boolean; fullPaymentPaid: boolean; notes?: string; adminNotes?: string; qrCode?: string;
   discountAmount?: number; basePrice?: number;
-  formula: { name: string; category: string };
-  timeSlot: { time: string };
+  type?: string;
+  formula: { name: string; category: string } | null;
+  timeSlot: { time: string } | null;
+  futsalTimeSlot?: { hour: number } | null;
+  courtNumber?: number | null;
+  playerCount?: number | null;
 }
 
 const STATUS_OPTIONS = [
@@ -207,7 +211,7 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
               )}
             </div>
             <p className="text-sm text-gray-500 mt-0.5 truncate">
-              {r.formula.name} · {formatDate(r.date)} {r.timeSlot.time} · {r.childrenCount} enfants
+              {r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")} · {formatDate(r.date)} {r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}:00` : "")} · {r.type === "futsal" ? `${r.playerCount} joueurs` : `${r.childrenCount} enfants`}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-2">

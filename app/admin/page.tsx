@@ -27,7 +27,8 @@ interface Stats {
 interface Reservation {
   id: string; reference: string; clientName: string; clientPhone: string; clientEmail: string;
   date: string; status: string; totalPrice: number; childrenCount: number;
-  formula: { name: string; category: string }; timeSlot: { time: string };
+  type?: string; formula: { name: string; category: string } | null; timeSlot: { time: string } | null;
+  futsalTimeSlot?: { hour: number } | null; courtNumber?: number | null; playerCount?: number | null;
   depositAmount: number; depositPaid: boolean; paymentType: string;
   fullPaymentPaid: boolean;
 }
@@ -133,15 +134,15 @@ function ReservationModal({ r, onClose }: { r: Reservation; onClose: () => void 
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">Formule</p>
-              <p className="font-semibold text-gray-800">{r.formula.name}</p>
+              <p className="font-semibold text-gray-800">{r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">Créneau</p>
-              <p className="font-semibold text-gray-800">{r.timeSlot.time}</p>
+              <p className="font-semibold text-gray-800">{r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}:00` : "—")}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-xs text-gray-400 mb-0.5">Enfants</p>
-              <p className="font-semibold text-gray-800">{r.childrenCount}</p>
+              <p className="text-xs text-gray-400 mb-0.5">{r.type === "futsal" ? "Joueurs" : "Enfants"}</p>
+              <p className="font-semibold text-gray-800">{r.type === "futsal" ? r.playerCount : r.childrenCount}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">Total</p>
@@ -187,9 +188,10 @@ function WeeklyPlanning({ reservations }: { reservations: Reservation[] }) {
 
   const SLOTS = ["09:00-12:00", "12:30-15:30", "16:00-19:00"];
 
-  // Group reservations by day+slot
+  // Group reservations by day+slot (birthday only)
   const grouped: Record<string, Record<string, Reservation[]>> = {};
   for (const r of reservations) {
+    if (!r.timeSlot) continue; // skip futsal
     const day = format(parseISO(r.date.slice(0, 10)), "yyyy-MM-dd");
     const slot = r.timeSlot.time;
     if (!grouped[day]) grouped[day] = {};
@@ -437,9 +439,9 @@ export default function AdminDashboard() {
                           <p className="font-medium text-gray-900">{r.clientName}</p>
                           <p className="text-gray-400 text-xs">{r.reference}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-700 max-w-[140px] truncate">{r.formula.name}</td>
-                        <td className="px-4 py-3 text-gray-700 font-mono text-xs">{r.timeSlot.time}</td>
-                        <td className="px-4 py-3 text-gray-700">{r.childrenCount}</td>
+                        <td className="px-4 py-3 text-gray-700 max-w-[140px] truncate">{r.formula?.name ?? (r.type === "futsal" ? `Futsal T${r.courtNumber}` : "—")}</td>
+                        <td className="px-4 py-3 text-gray-700 font-mono text-xs">{r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}:00` : "—")}</td>
+                        <td className="px-4 py-3 text-gray-700">{r.type === "futsal" ? r.playerCount : r.childrenCount}</td>
                         <td className="px-4 py-3 font-semibold text-emerald-700">{formatPrice(r.totalPrice)}</td>
                         <td className="px-4 py-3">
                           {r.fullPaymentPaid
