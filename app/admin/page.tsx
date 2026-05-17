@@ -280,7 +280,7 @@ function WeeklyPlanning({ reservations }: { reservations: Reservation[] }) {
                               className={cn(
                                 "w-full text-left rounded-lg border-l-4 px-2 py-1.5 text-xs transition-all hover:shadow-md hover:scale-[1.02] active:scale-100 cursor-pointer",
                                 r.status === "confirmed"
-                                  ? categoryColor[r.formula.category] ?? "border-l-gray-400 bg-gray-50"
+                                  ? categoryColor[r.formula?.category ?? ""] ?? "border-l-gray-400 bg-gray-50"
                                   : r.status === "cancelled"
                                   ? "border-l-gray-300 bg-gray-50 opacity-50"
                                   : "border-l-amber-400 bg-amber-50"
