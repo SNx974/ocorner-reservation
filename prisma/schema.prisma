@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Formula {
+  id           String        @id @default(cuid())
+  name         String
+  category     String
+  includes     String
+  pricePerChild Float
+  minChildren  Int
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations Reservation[]
+}
+
+model TimeSlot {
+  id           String        @id @default(cuid())
+  time         String
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+}
+
+model PromoCode {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  label         String
+  discountType  String        // "percent" | "fixed"
+  discountValue Float         // 100 = 100% ou montant fixe €
+  isActive      Boolean       @default(true)
+  usageLimit    Int?          // null = illimité
+  usageCount    Int           @default(0)
+  expiresAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  reservations  Reservation[]
+}
+
+model Reservation {
+  id              String      @id @default(cuid())
+  reference       String      @unique
+
+  // Type : "birthday" | "futsal"
+  type            String      @default("birthday")
+
+  clientName      String
+  clientEmail     String
+  clientPhone     String
+
+  // Birthday fields
+  formulaId       String?
+  formula         Formula?    @relation(fields: [formulaId], references: [id])
+  timeSlotId      String?
+  timeSlot        TimeSlot?   @relation(fields: [timeSlotId], references: [id])
+  childrenCount   Int         @default(0)
+
+  // Futsal fields
+  futsalTimeSlotId String?
+  futsalTimeSlot   FutsalTimeSlot? @relation(fields: [futsalTimeSlotId], references: [id])
+  courtNumber      Int?        // 1, 2 or 3
+  playerCount      Int?        // min 10
+
+  date            DateTime
+  totalPrice      Float
+  basePrice       Float       @default(0)
+
+  // Promo code
+  promoCodeId     String?
+  promoCode       PromoCode?  @relation(fields: [promoCodeId], references: [id])
+  discountAmount  Float       @default(0)
+
+  paymentType     String
+  depositAmount   Float       @default(0)
+  depositPaid     Boolean     @default(false)
+  depositPaidAt   DateTime?
+  depositPaymentMethod String?
+  fullPaymentPaid Boolean     @default(false)
+  fullPaymentPaidAt DateTime?
+  stripePaymentIntentId String?
+  stripeDepositIntentId String?
+
+  status          String      @default("pending")
+  expiresAt       DateTime?
+  qrCode          String?
+  notes           String?
+  adminNotes      String?
+
+  // Futsal split payment
+  shareToken      String?     @unique
+  participants    FutsalParticipant[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model Settings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model FutsalTimeSlot {
+  id           String        @id @default(cuid())
+  hour         Int           // 10 to 22
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+}
+
+model FutsalParticipant {
+  id                    String      @id @default(cuid())
+  reservationId         String
+  reservation           Reservation @relation(fields: [reservationId], references: [id])
+  name                  String
+  email                 String?
+  phone                 String?
+  amountDue             Float
+  isPaid                Boolean     @default(false)
+  paidAt                DateTime?
+  stripePaymentIntentId String?
+  stripeClientSecret    String?
+  shareToken            String      @unique @default(cuid())
+  createdAt             DateTime    @default(now())
+}

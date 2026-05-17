@@ -1,0 +1,201 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { generateReference, calculateDeposit, calculateExpiryDate, generateQRCode } from "@/lib/utils";
+import { sendConfirmationEmail } from "@/lib/email";
+import crypto from "crypto";
+
+const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
+const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder");
+
+const schema = z.object({
+  clientName: z.string().min(2),
+  clientEmail: z.string().email(),
+  clientPhone: z.string().min(8),
+  futsalTimeSlotId: z.string(),
+  courtNumber: z.number().int().min(1).max(3),
+  date: z.string(),
+  playerCount: z.number().int().min(10),
+  paymentType: z.enum(["online_full", "onsite_deposit"]),
+  notes: z.string().optional(),
+  promoCodeId: z.string().optional(),
+  discountAmount: z.number().optional(),
+});
+
+async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string) {
+  const { stripe, formatAmountForStripe } = await import("@/lib/stripe");
+  return stripe.paymentIntents.create({
+    amount: formatAmountForStripe(amount),
+    currency: "eur",
+    metadata,
+    description,
+  });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const data = schema.parse(body);
+
+    const settings = await prisma.settings.findMany();
+    const getSetting = (key: string, fallback: string) =>
+      settings.find((s) => s.key === key)?.value ?? fallback;
+
+    const pricePerPlayer = parseFloat(getSetting("futsal_price_per_player", "8"));
+    const minPlayers = parseInt(getSetting("futsal_min_players", "10"));
+    const depositPct = parseFloat(getSetting("futsal_deposit_percentage", "30"));
+    const depositMin = parseFloat(getSetting("futsal_deposit_min_amount", "30"));
+    const expiryHours = parseInt(getSetting("booking_expiry_hours", "72"));
+
+    if (data.playerCount < minPlayers) {
+      return NextResponse.json({ error: `Minimum ${minPlayers} joueurs requis` }, { status: 400 });
+    }
+
+    const slot = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
+    if (!slot) return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
+
+    // Check court availability
+    const start = new Date(data.date + "T00:00:00");
+    const end = new Date(data.date + "T23:59:59");
+    const existing = await prisma.reservation.findFirst({
+      where: {
+        type: "futsal",
+        futsalTimeSlotId: data.futsalTimeSlotId,
+        courtNumber: data.courtNumber,
+        date: { gte: start, lte: end },
+        status: { notIn: ["cancelled", "expired"] },
+      },
+    });
+    if (existing) {
+      return NextResponse.json({ error: "Ce terrain est déjà réservé pour ce créneau" }, { status: 409 });
+    }
+
+    const basePrice = pricePerPlayer * data.playerCount;
+    let appliedDiscount = 0;
+    let validatedPromoId: string | undefined;
+
+    if (data.promoCodeId) {
+      const promo = await prisma.promoCode.findUnique({ where: { id: data.promoCodeId } });
+      if (promo?.isActive) {
+        appliedDiscount = data.discountAmount ?? 0;
+        validatedPromoId = promo.id;
+      }
+    }
+
+    const totalPrice = Math.max(0, basePrice - appliedDiscount);
+    const depositAmount = calculateDeposit(totalPrice, depositPct, depositMin);
+    const reference = generateReference();
+    const expiresAt = calculateExpiryDate(expiryHours);
+    const shareToken = crypto.randomUUID();
+
+    let status = "pending";
+    let stripePaymentIntentId: string | undefined;
+    let stripeDepositIntentId: string | undefined;
+    let stripeClientSecret: string | undefined;
+
+    if (!IS_DEMO) {
+      if (data.paymentType === "online_full") {
+        const intent = await createStripeIntent(totalPrice, { reference, type: "futsal_full" }, `Futsal ${reference}`);
+        stripePaymentIntentId = intent.id;
+        stripeClientSecret = intent.client_secret!;
+      } else {
+        const intent = await createStripeIntent(depositAmount, { reference, type: "futsal_deposit" }, `Acompte Futsal ${reference}`);
+        stripeDepositIntentId = intent.id;
+        stripeClientSecret = intent.client_secret!;
+        status = "deposit_pending";
+      }
+    } else {
+      stripeClientSecret = `demo_secret_${reference}`;
+      status = data.paymentType === "online_full" ? "pending" : "deposit_pending";
+    }
+
+    const reservation = await prisma.reservation.create({
+      data: {
+        reference,
+        type: "futsal",
+        clientName: data.clientName,
+        clientEmail: data.clientEmail,
+        clientPhone: data.clientPhone,
+        futsalTimeSlotId: data.futsalTimeSlotId,
+        courtNumber: data.courtNumber,
+        playerCount: data.playerCount,
+        date: new Date(data.date),
+        basePrice,
+        totalPrice,
+        discountAmount: appliedDiscount,
+        promoCodeId: validatedPromoId,
+        paymentType: data.paymentType,
+        depositAmount,
+        depositPaid: false,
+        fullPaymentPaid: false,
+        stripePaymentIntentId,
+        stripeDepositIntentId,
+        status,
+        expiresAt,
+        notes: data.notes,
+        shareToken,
+      },
+      include: { futsalTimeSlot: true },
+    });
+
+    if (validatedPromoId) {
+      await prisma.promoCode.update({ where: { id: validatedPromoId }, data: { usageCount: { increment: 1 } } });
+    }
+
+    const qrData = JSON.stringify({ ref: reference, id: reservation.id, type: "futsal" });
+    const qrCode = await generateQRCode(qrData);
+    await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });
+
+    sendConfirmationEmail({
+      clientName: reservation.clientName,
+      clientEmail: reservation.clientEmail,
+      reference,
+      formulaName: `Futsal — Terrain ${data.courtNumber} — ${data.playerCount} joueurs`,
+      date: reservation.date,
+      time: `${slot.hour}:00`,
+      childrenCount: data.playerCount,
+      totalPrice,
+      depositAmount,
+      paymentType: data.paymentType,
+      status,
+      qrCode,
+    }).catch(console.error);
+
+    return NextResponse.json({
+      reservation: { ...reservation, qrCode, shareToken },
+      clientSecret: stripeClientSecret,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
+    }
+    console.error("Futsal reservation error:", error);
+    return NextResponse.json({ error: "Erreur interne" }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const reference = searchParams.get("reference");
+  const shareToken = searchParams.get("shareToken");
+
+  if (reference) {
+    const r = await prisma.reservation.findUnique({
+      where: { reference },
+      include: { futsalTimeSlot: true, participants: true },
+    });
+    if (!r) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
+    return NextResponse.json(r);
+  }
+
+  if (shareToken) {
+    const r = await prisma.reservation.findUnique({
+      where: { shareToken },
+      include: { futsalTimeSlot: true, participants: { orderBy: { createdAt: "asc" } } },
+    });
+    if (!r) return NextResponse.json({ error: "Lien invalide" }, { status: 404 });
+    return NextResponse.json(r);
+  }
+
+  return NextResponse.json({ error: "Paramètre manquant" }, { status: 400 });
+}
