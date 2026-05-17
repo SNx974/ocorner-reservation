@@ -9,10 +9,10 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto text-center">
           <div className="text-5xl mb-3">🎡⚽</div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            Marmaille Parc + Foot
+            Ocorner Réservation
           </h1>
           <p className="mt-2 text-white/85 text-lg">
-            Réservez en ligne en moins de 1 minute !
+            Anniversaires & Futsal — Réservez en ligne !
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-4 text-sm">
             {["🎡 Parc de jeux", "⚽ Foot à 5", "🥞 Crêpes & Déjeuner", "👶 Dès 6 enfants"].map(t => (
@@ -31,7 +31,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">
-        <p>📍 Marmaille Parc + Foot — Réunion</p>
+        <p>📍 Ocorner — Réunion</p>
         <p className="mt-1">📞 Contact : 0692 XX XX XX</p>
       </footer>
     </main>

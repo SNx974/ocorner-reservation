@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Marmaille Parc + Foot — Réservation en ligne",
-  description: "Réservez votre session au Marmaille Parc & Foot. Formules enfants avec boisson, crêpe ou déjeuner.",
+  title: "Ocorner Réservation — Anniversaires & Futsal",
+  description: "Réservez votre anniversaire ou votre terrain de futsal. Formules Marmaille Parc, Marmaille + Foot, et sessions futsal.",
 };
 
 export const viewport: Viewport = {

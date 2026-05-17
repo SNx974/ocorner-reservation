@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, CalendarDays, Settings, LogOut,
-  Menu, X, ChevronRight, Tag, Trophy, Clock,
+  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,7 @@ const navItems = [
   { href: "/admin/reservations", icon: CalendarDays, label: "Réservations" },
   { href: "/admin/planning-futsal", icon: Trophy, label: "Planning Futsal" },
   { href: "/admin/creneaux", icon: Clock, label: "Créneaux" },
+  { href: "/admin/formules", icon: Utensils, label: "Formules & Tarifs" },
   { href: "/admin/promo", icon: Tag, label: "Codes promo" },
   { href: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];
@@ -55,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <aside className="hidden md:flex flex-col w-64 bg-gray-900 text-white shrink-0">
           <div className="p-6 border-b border-gray-700">
             <div className="text-2xl mb-1">🎡⚽</div>
-            <h1 className="font-bold text-white">Marmaille Parc</h1>
+            <h1 className="font-bold text-white">Ocorner</h1>
             <p className="text-gray-400 text-xs mt-0.5">Panneau Administration</p>
           </div>
           <nav className="flex-1 p-4 space-y-1">
