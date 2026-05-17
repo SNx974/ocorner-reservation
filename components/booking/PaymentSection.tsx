@@ -173,8 +173,7 @@ export function PaymentSection({
   // Detect demo mode also from the clientSecret value itself
   const isDemoSecret = clientSecret?.startsWith("demo_secret_");
   const showStripeForm = clientSecret && !IS_DEMO && !isDemoSecret;
-  const showDemoForm = clientSecret && (IS_DEMO || isDemoSecret) && paymentType !== "onsite_full" &&
-    !(paymentType === "onsite_deposit" && depositPaymentMethod === "onsite");
+  const showDemoForm = clientSecret && (IS_DEMO || isDemoSecret);
 
   return (
     <div className="space-y-5">
@@ -228,29 +227,13 @@ export function PaymentSection({
         </div>
       )}
 
-      {/* Deposit method for onsite_deposit */}
+      {/* Info acompte en ligne (automatique) */}
       {paymentType === "onsite_deposit" && !reservation && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-          <p className="font-semibold text-amber-900 mb-3">
-            Comment souhaitez-vous verser l'acompte de {formatPrice(deposit)} ?
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { id: "online", label: "💳 En ligne maintenant", desc: "Carte bancaire sécurisée" },
-              { id: "onsite", label: "🏪 Sur place", desc: "Espèces ou CB dans les 72h" },
-            ].map(m => (
-              <button key={m.id} type="button"
-                onClick={() => onDepositMethodChange(m.id as "online" | "onsite")}
-                className={cn(
-                  "p-3 rounded-xl border-2 text-left transition-all",
-                  depositPaymentMethod === m.id
-                    ? "border-amber-500 bg-amber-100"
-                    : "border-amber-200 bg-white hover:border-amber-400"
-                )}>
-                <p className="font-semibold text-sm">{m.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{m.desc}</p>
-              </button>
-            ))}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <CreditCard className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-amber-900 text-sm">Acompte de {formatPrice(deposit)} par carte</p>
+            <p className="text-xs text-amber-700 mt-0.5">Le solde de {formatPrice(total - deposit)} sera réglé sur place le jour J.</p>
           </div>
         </div>
       )}
@@ -286,12 +269,9 @@ export function PaymentSection({
 
       {/* Submit button (before reservation created) */}
       {!reservation && (
-        <Button type="button" size="lg" className="w-full" onClick={onSubmit}
-          disabled={loading || (paymentType === "onsite_deposit" && !depositPaymentMethod)}>
+        <Button type="button" size="lg" className="w-full" onClick={onSubmit} disabled={loading}>
           {loading ? (
             <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Enregistrement...</>
-          ) : paymentType === "onsite_deposit" && depositPaymentMethod === "onsite" ? (
-            <><CheckCircle className="w-5 h-5 mr-2" />Réserver (acompte sur place)</>
           ) : (
             <><CreditCard className="w-5 h-5 mr-2" />Procéder au paiement</>
           )}

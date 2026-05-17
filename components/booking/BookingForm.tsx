@@ -154,7 +154,7 @@ export function BookingForm() {
       if (json.clientSecret) {
         setClientSecret(json.clientSecret);
       } else {
-        // onsite_full or onsite_deposit+pay onsite → confirmation directe
+        // confirmation directe (ne devrait pas arriver normalement)
         setConfirmed(true);
       }
     } catch (e: unknown) {
