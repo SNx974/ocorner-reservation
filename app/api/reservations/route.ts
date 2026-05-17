@@ -91,9 +91,18 @@ export async function POST(req: NextRequest) {
     let depositPaid = false;
     let fullPaymentPaid = false;
 
+    // Si total = 0 (promo 100%), confirmer directement sans Stripe
+    if (totalPrice === 0) {
+      status = "confirmed";
+      depositPaid = true;
+      fullPaymentPaid = true;
+    }
+
     const needsOnlinePayment =
-      data.paymentType === "online_full" ||
-      (data.paymentType === "onsite_deposit" && data.depositPaymentMethod === "online");
+      totalPrice > 0 && (
+        data.paymentType === "online_full" ||
+        (data.paymentType === "onsite_deposit" && data.depositPaymentMethod === "online")
+      );
 
     if (!IS_DEMO && needsOnlinePayment) {
       // Real Stripe flow

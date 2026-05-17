@@ -96,7 +96,10 @@ export async function POST(req: NextRequest) {
     let stripeDepositIntentId: string | undefined;
     let stripeClientSecret: string | undefined;
 
-    if (!IS_DEMO) {
+    // Si le total est 0 (promo 100%), confirmer directement sans passer par Stripe
+    if (totalPrice === 0) {
+      status = "confirmed";
+    } else if (!IS_DEMO) {
       if (data.paymentType === "online_full") {
         const intent = await createStripeIntent(totalPrice, { reference, type: "futsal_full" }, `Futsal ${reference}`);
         stripePaymentIntentId = intent.id;
