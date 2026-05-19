@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, CalendarDays, Settings, LogOut,
-  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils,
+  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ const navItems = [
   { href: "/admin/planning-futsal", icon: Trophy, label: "Planning Futsal" },
   { href: "/admin/creneaux", icon: Clock, label: "Créneaux" },
   { href: "/admin/formules", icon: Utensils, label: "Formules & Tarifs" },
+  { href: "/admin/emails", icon: Mail, label: "Emails envoyés" },
   { href: "/admin/promo", icon: Tag, label: "Codes promo" },
   { href: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];
