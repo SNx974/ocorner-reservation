@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,14 +8,8 @@ import {
   Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail, PartyPopper, Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface AdminContextType {
-  token: string | null;
-  setToken: (t: string | null) => void;
-}
-
-export const AdminContext = createContext<AdminContextType>({ token: null, setToken: () => {} });
-export const useAdmin = () => useContext(AdminContext);
+import { AdminContext } from "./admin-context";
+export { useAdmin } from "./admin-context";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
