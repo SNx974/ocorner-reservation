@@ -382,7 +382,7 @@ export default function FutsalPlanningPage() {
                           <div className="space-y-1 min-h-[36px]">
                             {/* Court 1, 2, 3 */}
                             {[1, 2, 3].map(court => {
-                              const entries = courtsAtHour[court] ?? [];
+                              const entries = (courtsAtHour[court] ?? []).filter(r => r.status !== "cancelled" && r.status !== "expired");
                               return entries.map(r => {
                                 const isBday = r.type === "birthday";
                                 return (
@@ -390,7 +390,6 @@ export default function FutsalPlanningPage() {
                                     className={cn(
                                       "w-full text-left rounded-lg border-l-4 px-2 py-1 text-xs transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer",
                                       isBday ? bdayFootColor : (courtColors[court] ?? "border-l-gray-400 bg-gray-50"),
-                                      r.status === "cancelled" && "opacity-40"
                                     )}>
                                     <p className="font-semibold text-gray-900 truncate leading-tight">
                                       {isBday ? "🎂⚽" : `T${court}`} {r.clientName.split(" ")[0]}

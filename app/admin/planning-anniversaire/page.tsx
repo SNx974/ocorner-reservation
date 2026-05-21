@@ -514,7 +514,7 @@ export default function PlanningAnniversairePage() {
   const [selected, setSelected] = useState<Reservation | null>(null);
   const [quickAdd, setQuickAdd] = useState<{ date: string; slot: string } | null>(null);
   const [view, setView] = useState<"week" | "list">("week");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("active");
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -556,7 +556,11 @@ export default function PlanningAnniversairePage() {
 
   // List view with filter
   const filteredList = reservations
-    .filter(r => filterStatus === "all" || r.status === filterStatus)
+    .filter(r => {
+      if (filterStatus === "all") return true;
+      if (filterStatus === "active") return r.status !== "cancelled" && r.status !== "expired";
+      return r.status === filterStatus;
+    })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -666,7 +670,7 @@ export default function PlanningAnniversairePage() {
                   <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Créneau</th>
                   {days.map(day => {
                     const dayStr = format(day, "yyyy-MM-dd");
-                    const dayResCount = Object.values(grouped[dayStr] ?? {}).flat().filter(r => r.status !== "cancelled").length;
+                    const dayResCount = Object.values(grouped[dayStr] ?? {}).flat().filter(r => r.status !== "cancelled" && r.status !== "expired").length;
                     return (
                       <th key={day.toISOString()} className={cn("px-3 py-3 text-center", isToday(day) ? "text-emerald-700" : "text-gray-700")}>
                         <div className={cn("rounded-xl px-2 py-1.5 inline-block", isToday(day) && "bg-emerald-100")}>
@@ -696,7 +700,7 @@ export default function PlanningAnniversairePage() {
                     {days.map(day => {
                       const dayStr = format(day, "yyyy-MM-dd");
                       const cell = grouped[dayStr]?.[slot] ?? [];
-                      const activeCell = cell.filter(r => r.status !== "cancelled");
+                      const activeCell = cell.filter(r => r.status !== "cancelled" && r.status !== "expired");
 
                       return (
                         <td key={day.toISOString()} className="px-2 py-2 align-top">
@@ -756,11 +760,12 @@ export default function PlanningAnniversairePage() {
           {/* Filter */}
           <div className="flex gap-2 flex-wrap">
             {[
-              { v: "all", l: "Toutes" },
+              { v: "active", l: "📅 Actives" },
               { v: "confirmed", l: "✅ Confirmées" },
               { v: "pending", l: "⏳ En attente" },
               { v: "deposit_pending", l: "💳 Acompte" },
               { v: "cancelled", l: "❌ Annulées" },
+              { v: "all", l: "Toutes" },
             ].map(f => (
               <button key={f.v} onClick={() => setFilterStatus(f.v)}
                 className={cn(
