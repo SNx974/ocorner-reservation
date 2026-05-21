@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, CalendarDays, Settings, LogOut,
-  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail, PartyPopper,
+  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail, PartyPopper, Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,7 @@ const navItems = [
   { href: "/admin/creneaux", icon: Clock, label: "Créneaux" },
   { href: "/admin/formules", icon: Utensils, label: "Formules & Tarifs" },
   { href: "/admin/emails", icon: Mail, label: "Emails envoyés" },
+  { href: "/admin/email-template", icon: Palette, label: "Template Email" },
   { href: "/admin/promo", icon: Tag, label: "Codes promo" },
   { href: "/admin/settings", icon: Settings, label: "Paramètres" },
 ];

@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { formatDate, formatPrice } from "./utils";
+import { EMAIL_TEMPLATE_DEFAULTS } from "@/app/api/admin/email-template/route";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -7,7 +8,21 @@ function getResend() {
   return new Resend(key);
 }
 
-// Save email to DB (lazy import to avoid circular deps at build time)
+// ─── Load template settings from DB ──────────────────────────────────
+async function getTemplateSettings(): Promise<Record<string, string>> {
+  try {
+    const { prisma } = await import("./prisma");
+    const keys = Object.keys(EMAIL_TEMPLATE_DEFAULTS);
+    const settings = await prisma.settings.findMany({ where: { key: { in: keys } } });
+    const result: Record<string, string> = { ...EMAIL_TEMPLATE_DEFAULTS };
+    for (const s of settings) result[s.key] = s.value;
+    return result;
+  } catch {
+    return { ...EMAIL_TEMPLATE_DEFAULTS };
+  }
+}
+
+// ─── Save email to DB ─────────────────────────────────────────────────
 async function saveEmail(opts: {
   to: string; subject: string; html: string;
   type: string; reference?: string; reservationId?: string;
@@ -27,7 +42,7 @@ async function saveEmail(opts: {
         errorMessage: opts.errorMessage,
       },
     });
-  } catch { /* silent — email saving failure must not crash the app */ }
+  } catch { /* silent */ }
 }
 
 export interface ReservationEmailData {
@@ -44,12 +59,11 @@ export interface ReservationEmailData {
   status: string;
   qrCode?: string;
   reservationId?: string;
-  // birthday-specific extras
   isBirthday?: boolean;
 }
 
-// ─── HTML template helpers ───────────────────────────────────────────
-function baseLayout(content: string, title: string) {
+// ─── HTML helpers ────────────────────────────────────────────────────
+function baseLayout(content: string, title: string, phone: string) {
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -62,7 +76,7 @@ function baseLayout(content: string, title: string) {
     ${content}
     <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
       Ocorner — Réservation en ligne · La Réunion<br/>
-      <a href="tel:${process.env.PARK_PHONE ?? '0692000000'}" style="color:#10b981;">${process.env.PARK_PHONE ?? '0692 XX XX XX'}</a>
+      <a href="tel:${phone.replace(/\s/g, '')}" style="color:#10b981;">${phone}</a>
     </p>
   </div>
 </body>
@@ -76,10 +90,24 @@ function row(label: string, value: string, highlight = false) {
   </tr>`;
 }
 
-// ─── Birthday confirmation email ──────────────────────────────────────
-export function buildBirthdayEmailHtml(data: ReservationEmailData & { depositPaid?: boolean }) {
+// ─── Birthday email ───────────────────────────────────────────────────
+export function buildBirthdayEmailHtml(
+  data: ReservationEmailData & { depositPaid?: boolean },
+  tpl: Record<string, string> = EMAIL_TEMPLATE_DEFAULTS
+) {
   const isPaid = data.paymentType === "online_full" || data.totalPrice === 0;
   const remainingAmount = data.totalPrice - data.depositAmount;
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const parkName = tpl.email_park_name ?? EMAIL_TEMPLATE_DEFAULTS.email_park_name;
+  const parkEmoji = tpl.email_park_emoji ?? EMAIL_TEMPLATE_DEFAULTS.email_park_emoji;
+  const subtitle = tpl.email_birthday_header_subtitle ?? EMAIL_TEMPLATE_DEFAULTS.email_birthday_header_subtitle;
+  const intro = tpl.email_birthday_intro ?? EMAIL_TEMPLATE_DEFAULTS.email_birthday_intro;
+  const contactText = tpl.email_birthday_contact_text ?? EMAIL_TEMPLATE_DEFAULTS.email_birthday_contact_text;
+
+  let infoBlocks: Array<{ emoji: string; title: string; desc: string }> = [];
+  try {
+    infoBlocks = JSON.parse(tpl.email_birthday_info_blocks ?? EMAIL_TEMPLATE_DEFAULTS.email_birthday_info_blocks);
+  } catch { infoBlocks = []; }
 
   const paymentBlock = isPaid
     ? `<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:16px 20px;margin:20px 0;">
@@ -100,25 +128,30 @@ export function buildBirthdayEmailHtml(data: ReservationEmailData & { depositPai
       </div>`
     : "";
 
+  const infoBlocksHtml = infoBlocks.length > 0
+    ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;">
+        <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#15803d;">📌 Informations pratiques</p>
+        <table style="width:100%;border-collapse:collapse;">
+          ${infoBlocks.map(b => `<tr>
+            <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">${b.emoji}</td>
+            <td style="padding:6px 0;font-size:13px;color:#166534;line-height:1.5;">
+              <strong>${b.title}</strong><br/>${b.desc}
+            </td>
+          </tr>`).join("")}
+        </table>
+      </div>`
+    : "";
+
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-
-  <!-- Header -->
   <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);padding:36px 32px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:8px;">🎡⚽</div>
-    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;letter-spacing:-0.5px;">Ocorner Réservation</h1>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Votre anniversaire est confirmé 🎉</p>
+    <div style="font-size:48px;margin-bottom:8px;">${parkEmoji}</div>
+    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;letter-spacing:-0.5px;">${parkName} Réservation</h1>
+    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">${subtitle}</p>
   </div>
-
-  <!-- Body -->
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
-    <p style="font-size:14px;color:#475569;line-height:1.6;">
-      Merci pour votre réservation ! Nous avons bien enregistré votre anniversaire et nous avons hâte de vous accueillir.
-      Voici le récapitulatif complet de votre réservation.
-    </p>
-
-    <!-- Recap table -->
+    <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
     <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
       <div style="background:#1e293b;padding:12px 16px;">
         <p style="margin:0;color:white;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">📋 Détails de la réservation</p>
@@ -132,85 +165,46 @@ export function buildBirthdayEmailHtml(data: ReservationEmailData & { depositPai
         ${row("Montant total", formatPrice(data.totalPrice), true)}
       </table>
     </div>
-
-    <!-- Payment status -->
     ${paymentBlock}
-
-    <!-- QR Code -->
     ${qrBlock}
-
-    <!-- Practical info -->
-    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;">
-      <p style="margin:0 0 14px;font-size:15px;font-weight:700;color:#15803d;">📌 Informations pratiques</p>
-      <table style="width:100%;border-collapse:collapse;">
-        <tr>
-          <td style="padding:6px 0;vertical-align:top;width:28px;font-size:16px;">🚫</td>
-          <td style="padding:6px 0;font-size:13px;color:#166534;line-height:1.5;">
-            <strong>Boissons extérieures non admises</strong><br/>
-            Pour le confort de tous, merci de ne pas apporter de boissons de l'extérieur.
-            Des boissons sont disponibles sur place.
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:6px 0;vertical-align:top;font-size:16px;">🎂</td>
-          <td style="padding:6px 0;font-size:13px;color:#166534;line-height:1.5;">
-            <strong>Gâteau d'anniversaire bienvenu !</strong><br/>
-            Vous pouvez apporter votre gâteau. Nous disposons d'un espace réfrigéré
-            pour le conserver jusqu'au moment du dessert.
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:6px 0;vertical-align:top;font-size:16px;">🥤</td>
-          <td style="padding:6px 0;font-size:13px;color:#166534;line-height:1.5;">
-            <strong>Gobelets fournis</strong><br/>
-            Des gobelets sont mis à disposition pour tous les enfants.
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:6px 0;vertical-align:top;font-size:16px;">⏰</td>
-          <td style="padding:6px 0;font-size:13px;color:#166534;line-height:1.5;">
-            <strong>Arrivée recommandée 10 min avant le début</strong><br/>
-            Présentez ce mail ou votre QR code à l'accueil pour valider votre entrée.
-          </td>
-        </tr>
-      </table>
-    </div>
-
-    <!-- Contact -->
+    ${infoBlocksHtml}
     <div style="text-align:center;padding:16px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
-      <p style="margin:0;font-size:14px;color:#475569;">Une question ? Contactez-nous :</p>
-      <a href="tel:${process.env.PARK_PHONE ?? '0692000000'}"
+      <p style="margin:0;font-size:14px;color:#475569;">${contactText}</p>
+      <a href="tel:${phone.replace(/\s/g, '')}"
          style="display:inline-block;margin-top:8px;font-size:18px;font-weight:700;color:#10b981;text-decoration:none;">
-        📞 ${process.env.PARK_PHONE ?? '0692 XX XX XX'}
+        📞 ${phone}
       </a>
     </div>
   </div>
-
-  <!-- Footer -->
   <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
     <p style="margin:0;font-size:12px;color:#94a3b8;">
-      Réf. <strong>${data.reference}</strong> · Ocorner, La Réunion · Ce mail a été envoyé automatiquement, merci de ne pas y répondre.
+      Réf. <strong>${data.reference}</strong> · ${parkName}, La Réunion · Ce mail a été envoyé automatiquement, merci de ne pas y répondre.
     </p>
   </div>
-
 </div>`;
 
-  return baseLayout(html, `Réservation ${data.reference} — Ocorner`);
+  return baseLayout(html, `Réservation ${data.reference} — ${parkName}`, phone);
 }
 
-// ─── Futsal confirmation email ────────────────────────────────────────
-function buildFutsalEmailHtml(data: ReservationEmailData) {
+// ─── Futsal email ─────────────────────────────────────────────────────
+function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, string> = EMAIL_TEMPLATE_DEFAULTS) {
   const isPaid = data.paymentType === "online_full" || data.totalPrice === 0;
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const parkName = tpl.email_park_name ?? EMAIL_TEMPLATE_DEFAULTS.email_park_name;
+  const subtitle = tpl.email_futsal_header_subtitle ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_header_subtitle;
+  const intro = tpl.email_futsal_intro ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_intro;
+  const tip = tpl.email_futsal_tip ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_tip;
+
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
   <div style="background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);padding:36px 32px;text-align:center;">
     <div style="font-size:48px;margin-bottom:8px;">⚽🏟️</div>
-    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">Ocorner Futsal</h1>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Votre terrain est réservé !</p>
+    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">${parkName} Futsal</h1>
+    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">${subtitle}</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
-    <p style="font-size:14px;color:#475569;line-height:1.6;">Votre session de futsal a bien été enregistrée. Voici les informations de votre réservation.</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
     <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
       <div style="background:#1e293b;padding:12px 16px;">
         <p style="margin:0;color:white;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">⚽ Détails</p>
@@ -229,16 +223,16 @@ function buildFutsalEmailHtml(data: ReservationEmailData) {
       <img src="${data.qrCode}" alt="QR" style="width:150px;height:150px;border:4px solid #e2e8f0;border-radius:10px;"/>
       <p style="font-family:monospace;font-size:16px;font-weight:bold;letter-spacing:2px;">${data.reference}</p>
     </div>` : ""}
-    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:16px 0;">
+    ${tip ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:16px 0;">
       <p style="margin:0;font-size:14px;color:#1d4ed8;font-weight:600;">💡 Bon à savoir</p>
-      <p style="margin:8px 0 0;font-size:13px;color:#1e40af;">Partagez le lien de réservation à vos coéquipiers pour qu'ils puissent payer leur part individuellement.</p>
-    </div>
+      <p style="margin:8px 0 0;font-size:13px;color:#1e40af;">${tip}</p>
+    </div>` : ""}
   </div>
   <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#94a3b8;">Réf. <strong>${data.reference}</strong> · Ocorner Futsal, La Réunion</p>
+    <p style="margin:0;font-size:12px;color:#94a3b8;">Réf. <strong>${data.reference}</strong> · ${parkName} Futsal, La Réunion</p>
   </div>
 </div>`;
-  return baseLayout(html, `Futsal ${data.reference} — Ocorner`);
+  return baseLayout(html, `Futsal ${data.reference} — ${parkName}`, phone);
 }
 
 // ─── Send + save ──────────────────────────────────────────────────────
@@ -250,10 +244,14 @@ async function sendAndSave(opts: {
   let status = "sent";
   let errorMessage: string | undefined;
 
+  const tpl = await getTemplateSettings();
+  const fromName = tpl.email_from_name ?? EMAIL_TEMPLATE_DEFAULTS.email_from_name;
+  const fromEmail = process.env.FROM_EMAIL ?? "noreply@ocorner.re";
+
   if (resend) {
     try {
       await resend.emails.send({
-        from: `Ocorner <${process.env.FROM_EMAIL ?? "noreply@ocorner.re"}>`,
+        from: `${fromName} <${fromEmail}>`,
         to: opts.to,
         subject: opts.subject,
         html: opts.html,
@@ -263,7 +261,6 @@ async function sendAndSave(opts: {
       errorMessage = e instanceof Error ? e.message : String(e);
     }
   } else {
-    // No Resend key — still save the email for admin preview
     status = "no_key";
   }
 
@@ -272,23 +269,23 @@ async function sendAndSave(opts: {
 }
 
 export async function sendConfirmationEmail(data: ReservationEmailData) {
+  const tpl = await getTemplateSettings();
   const isBirthday = data.isBirthday !== false && !data.formulaName.toLowerCase().includes("futsal");
-  const html = isBirthday ? buildBirthdayEmailHtml(data) : buildFutsalEmailHtml(data);
+  const html = isBirthday ? buildBirthdayEmailHtml(data, tpl) : buildFutsalEmailHtml(data, tpl);
+  const parkName = tpl.email_park_name ?? "Ocorner";
   const subject = isBirthday
-    ? `🎉 Réservation ${data.reference} — Anniversaire Ocorner`
-    : `⚽ Réservation ${data.reference} — Futsal Ocorner`;
+    ? `🎉 Réservation ${data.reference} — Anniversaire ${parkName}`
+    : `⚽ Réservation ${data.reference} — Futsal ${parkName}`;
 
-  return sendAndSave({
-    to: data.clientEmail,
-    subject,
-    html,
-    type: "confirmation",
-    reference: data.reference,
-    reservationId: data.reservationId,
-  });
+  return sendAndSave({ to: data.clientEmail, subject, html, type: "confirmation", reference: data.reference, reservationId: data.reservationId });
 }
 
 export async function sendDepositReminderEmail(data: ReservationEmailData) {
+  const tpl = await getTemplateSettings();
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const message = tpl.email_reminder_message ?? EMAIL_TEMPLATE_DEFAULTS.email_reminder_message;
+  const parkName = tpl.email_park_name ?? "Ocorner";
+
   const html = baseLayout(`
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
   <div style="background:#f59e0b;padding:28px 32px;text-align:center;">
@@ -302,26 +299,24 @@ export async function sendDepositReminderEmail(data: ReservationEmailData) {
       est toujours en attente de votre acompte de <strong style="color:#d97706;">${formatPrice(data.depositAmount)}</strong>.
     </p>
     <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:16px;margin:20px 0;">
-      <p style="margin:0;color:#92400e;font-weight:600;">⚠️ Sans paiement dans les 24h, votre créneau sera libéré automatiquement.</p>
+      <p style="margin:0;color:#92400e;font-weight:600;">⚠️ ${message}</p>
     </div>
     <p style="font-size:14px;color:#475569;">Contactez-nous rapidement :</p>
-    <a href="tel:${process.env.PARK_PHONE ?? '0692000000'}" style="display:inline-block;font-size:18px;font-weight:700;color:#f59e0b;text-decoration:none;">
-      📞 ${process.env.PARK_PHONE ?? '0692 XX XX XX'}
+    <a href="tel:${phone.replace(/\s/g, '')}" style="display:inline-block;font-size:18px;font-weight:700;color:#f59e0b;text-decoration:none;">
+      📞 ${phone}
     </a>
   </div>
-</div>`, `Rappel acompte ${data.reference}`);
+</div>`, `Rappel acompte ${data.reference}`, phone);
 
-  return sendAndSave({
-    to: data.clientEmail,
-    subject: `⏰ Rappel acompte — Réservation ${data.reference}`,
-    html,
-    type: "reminder",
-    reference: data.reference,
-    reservationId: data.reservationId,
-  });
+  return sendAndSave({ to: data.clientEmail, subject: `⏰ Rappel acompte — Réservation ${data.reference}`, html, type: "reminder", reference: data.reference, reservationId: data.reservationId });
 }
 
 export async function sendCancellationEmail(data: ReservationEmailData) {
+  const tpl = await getTemplateSettings();
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const message = tpl.email_cancel_message ?? EMAIL_TEMPLATE_DEFAULTS.email_cancel_message;
+  const parkName = tpl.email_park_name ?? "Ocorner";
+
   const html = baseLayout(`
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
   <div style="background:#ef4444;padding:28px 32px;text-align:center;">
@@ -333,19 +328,15 @@ export async function sendCancellationEmail(data: ReservationEmailData) {
     <p style="font-size:14px;color:#475569;">
       Votre réservation <strong>${data.reference}</strong> du <strong>${formatDate(data.date)}</strong> a été annulée.
     </p>
-    <p style="font-size:14px;color:#475569;">Vous souhaitez refaire une réservation ? Rendez-vous sur notre site.</p>
-    <a href="tel:${process.env.PARK_PHONE ?? '0692000000'}" style="display:inline-block;font-size:18px;font-weight:700;color:#ef4444;text-decoration:none;">
-      📞 ${process.env.PARK_PHONE ?? '0692 XX XX XX'}
+    <p style="font-size:14px;color:#475569;">${message}</p>
+    <a href="tel:${phone.replace(/\s/g, '')}" style="display:inline-block;font-size:18px;font-weight:700;color:#ef4444;text-decoration:none;">
+      📞 ${phone}
     </a>
   </div>
-</div>`, `Annulation ${data.reference}`);
+</div>`, `Annulation ${data.reference}`, phone);
 
-  return sendAndSave({
-    to: data.clientEmail,
-    subject: `❌ Annulation réservation ${data.reference} — Ocorner`,
-    html,
-    type: "cancellation",
-    reference: data.reference,
-    reservationId: data.reservationId,
-  });
+  return sendAndSave({ to: data.clientEmail, subject: `❌ Annulation réservation ${data.reference} — ${parkName}`, html, type: "cancellation", reference: data.reference, reservationId: data.reservationId });
 }
+
+// Re-export for admin preview
+export { getTemplateSettings };
