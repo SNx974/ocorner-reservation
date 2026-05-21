@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAdmin } from "./layout";
+import { useAdmin } from "./admin-context";
 import { formatPrice, formatDate, getStatusLabel, getStatusColor } from "@/lib/utils";
 import {
   TrendingUp, Calendar, AlertTriangle, CheckCircle,

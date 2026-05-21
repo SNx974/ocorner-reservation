@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminContext } from "./admin-context";
-export { useAdmin } from "./admin-context";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },

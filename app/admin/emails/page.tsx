@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAdmin } from "../layout";
+import { useAdmin } from "../admin-context";
 import {
   Mail, Search, RefreshCw, Send, Download, Eye, X,
   CheckCircle, AlertTriangle, Clock, Filter, ChevronLeft, ChevronRight,

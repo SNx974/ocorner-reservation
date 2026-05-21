@@ -18,7 +18,10 @@
       "Bash(git branch *)",
       "Bash(git push *)",
       "Bash(git rm *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(node -e ' *)",
+      "Bash(sed -i 's|from \"\\\\./layout\"|from \"./admin-context\"|g' app/admin/page.tsx)",
+      "Bash(sed -i 's|from \"\\\\.\\\\./layout\"|from \"../admin-context\"|g' app/admin/formules/page.tsx app/admin/reservations/page.tsx app/admin/planning-anniversaire/page.tsx app/admin/email-template/page.tsx app/admin/planning-futsal/page.tsx app/admin/promo/page.tsx app/admin/creneaux/page.tsx app/admin/settings/page.tsx app/admin/emails/page.tsx)"
     ]
   }
 }
