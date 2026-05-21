@@ -55,6 +55,68 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ reservations, total, page, limit });
 }
 
+// POST — admin manual reservation creation (confirmed, no payment)
+export async function POST(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json();
+  const { generateReference, generateQRCode } = await import("@/lib/utils");
+
+  const reference = generateReference();
+
+  // Birthday reservation
+  if (body.type === "birthday") {
+    const { clientName, clientEmail, clientPhone, formulaId, timeSlotId, date, childrenCount, notes } = body;
+    const formula = await prisma.formula.findUnique({ where: { id: formulaId } });
+    const totalPrice = formula ? formula.pricePerChild * parseInt(childrenCount) : 0;
+    const reservation = await prisma.reservation.create({
+      data: {
+        reference, type: "birthday",
+        clientName, clientEmail: clientEmail || `admin+${reference}@ocorner.re`,
+        clientPhone: clientPhone || "0000000000",
+        formulaId, timeSlotId,
+        date: new Date(date),
+        childrenCount: parseInt(childrenCount),
+        totalPrice, basePrice: totalPrice,
+        paymentType: "admin", depositAmount: 0,
+        depositPaid: true, fullPaymentPaid: true,
+        status: "confirmed", notes,
+      },
+      include: { formula: true, timeSlot: true },
+    });
+    const qrCode = await generateQRCode(JSON.stringify({ ref: reference, id: reservation.id, type: "birthday" }));
+    await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });
+    return NextResponse.json(reservation);
+  }
+
+  // Futsal reservation
+  if (body.type === "futsal") {
+    const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, date, playerCount, notes } = body;
+    const settings = await prisma.settings.findMany();
+    const courtPrice = parseFloat(settings.find(s => s.key === "futsal_court_price")?.value ?? "110");
+    const reservation = await prisma.reservation.create({
+      data: {
+        reference, type: "futsal",
+        clientName, clientEmail: clientEmail || `admin+${reference}@ocorner.re`,
+        clientPhone: clientPhone || "0000000000",
+        futsalTimeSlotId, courtNumber: parseInt(courtNumber),
+        date: new Date(date), playerCount: parseInt(playerCount),
+        totalPrice: courtPrice, basePrice: courtPrice,
+        paymentType: "admin", depositAmount: 0,
+        depositPaid: true, fullPaymentPaid: true,
+        status: "confirmed", notes,
+        shareToken: crypto.randomUUID(),
+      },
+      include: { futsalTimeSlot: true },
+    });
+    const qrCode = await generateQRCode(JSON.stringify({ ref: reference, id: reservation.id, type: "futsal" }));
+    await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });
+    return NextResponse.json(reservation);
+  }
+
+  return NextResponse.json({ error: "Type invalide" }, { status: 400 });
+}
+
 export async function PATCH(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

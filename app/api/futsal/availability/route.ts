@@ -3,6 +3,23 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// Map birthday time slot string → futsal hours blocked
+// e.g. "09:00-12:00" → [9, 10, 11]
+function timeSlotToHours(time: string): number[] {
+  const match = time.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!match) return [];
+  const startH = parseInt(match[1]);
+  const endH = parseInt(match[3]);
+  const endM = parseInt(match[4]);
+  const hours: number[] = [];
+  for (let h = startH; h < endH + (endM > 0 ? 1 : 0); h++) {
+    hours.push(h);
+  }
+  // Remove the last hour if end is exactly on the hour (e.g. 12:00 end → don't block 12)
+  if (endM === 0 && hours[hours.length - 1] === endH) hours.pop();
+  return hours;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
@@ -21,8 +38,8 @@ export async function GET(req: NextRequest) {
   const start = new Date(date + "T00:00:00");
   const end = new Date(date + "T23:59:59");
 
-  // Count active reservations per slot
-  const reservations = await prisma.reservation.findMany({
+  // 1. Futsal reservations
+  const futsalReservations = await prisma.reservation.findMany({
     where: {
       type: "futsal",
       date: { gte: start, lte: end },
@@ -31,11 +48,41 @@ export async function GET(req: NextRequest) {
     select: { futsalTimeSlotId: true, courtNumber: true },
   });
 
+  // 2. Birthday+foot reservations (marmaille_foot or foot category) → block a court
+  const birthdayFootReservations = await prisma.reservation.findMany({
+    where: {
+      type: "birthday",
+      date: { gte: start, lte: end },
+      status: { notIn: ["cancelled", "expired"] },
+      formula: { category: { in: ["marmaille_foot", "foot"] } },
+    },
+    include: { timeSlot: true },
+  });
+
+  // Build blocked courts per slot id
   const bookedPerSlot: Record<string, number[]> = {};
-  for (const r of reservations) {
+
+  for (const r of futsalReservations) {
     if (!r.futsalTimeSlotId) continue;
     if (!bookedPerSlot[r.futsalTimeSlotId]) bookedPerSlot[r.futsalTimeSlotId] = [];
     if (r.courtNumber) bookedPerSlot[r.futsalTimeSlotId].push(r.courtNumber);
+  }
+
+  // Map birthday foot → futsal slot hours → use court 1 (or first available)
+  // Birthday foot always occupies court 1 during those hours
+  const birthdayFootBlockedHours: Set<number> = new Set();
+  for (const r of birthdayFootReservations) {
+    if (!r.timeSlot) continue;
+    const hours = timeSlotToHours(r.timeSlot.time);
+    for (const h of hours) birthdayFootBlockedHours.add(h);
+  }
+
+  // For each slot, if birthday foot blocks that hour, mark court 1 as booked
+  for (const slot of slots) {
+    if (birthdayFootBlockedHours.has(slot.hour)) {
+      if (!bookedPerSlot[slot.id]) bookedPerSlot[slot.id] = [];
+      if (!bookedPerSlot[slot.id].includes(1)) bookedPerSlot[slot.id].push(1); // court 1 reserved for bday
+    }
   }
 
   const result = slots.map((slot) => {
@@ -51,6 +98,7 @@ export async function GET(req: NextRequest) {
       totalCourts: maxCourts,
       availableCourts,
       available: availableCourts.length > 0,
+      birthdayFootBlocked: birthdayFootBlockedHours.has(slot.hour),
     };
   });
 

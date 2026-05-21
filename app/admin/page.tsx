@@ -6,7 +6,7 @@ import { formatPrice, formatDate, getStatusLabel, getStatusColor } from "@/lib/u
 import {
   TrendingUp, Calendar, AlertTriangle, CheckCircle,
   Loader2, RefreshCw, ChevronLeft, ChevronRight,
-  Users, Clock, Phone, Mail, CreditCard, X,
+  Users, Clock, Phone, Mail, CreditCard, X, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -177,12 +177,121 @@ function ReservationModal({ r, onClose }: { r: Reservation; onClose: () => void 
   );
 }
 
+// ── Quick add birthday modal ───────────────────────────────────────
+function QuickAddBirthdayModal({
+  token, date, slot, onClose, onCreated,
+}: { token: string; date: string; slot: string; onClose: () => void; onCreated: () => void }) {
+  const [formulas, setFormulas] = useState<{ id: string; name: string; pricePerChild: number; minChildren: number }[]>([]);
+  const [slots, setSlots] = useState<{ id: string; time: string }[]>([]);
+  const [selectedFormula, setSelectedFormula] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [childrenCount, setChildrenCount] = useState("6");
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/formulas").then(r => r.json()),
+      fetch("/api/timeslots").then(r => r.json()),
+    ]).then(([f, s]) => {
+      setFormulas(f); setSlots(s);
+      if (f.length) setSelectedFormula(f[0].id);
+      const found = s.find((sl: { time: string }) => sl.time === slot);
+      if (found) setSelectedSlot(found.id);
+      else if (s.length) setSelectedSlot(s[0].id);
+    });
+  }, [slot]);
+
+  async function submit() {
+    if (!clientName.trim()) { setError("Nom requis"); return; }
+    if (!selectedFormula || !selectedSlot) { setError("Formule et créneau requis"); return; }
+    setLoading(true); setError("");
+    const res = await fetch("/api/admin/reservations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({
+        type: "birthday", clientName, clientEmail, clientPhone,
+        formulaId: selectedFormula, timeSlotId: selectedSlot,
+        date, childrenCount, notes,
+      }),
+    });
+    if (res.ok) { onCreated(); onClose(); }
+    else { const j = await res.json(); setError(j.error ?? "Erreur"); }
+    setLoading(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-bold text-gray-900 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-emerald-600" /> Anniversaire — {date ? format(new Date(date + "T12:00:00"), "d MMM", { locale: fr }) : ""}
+          </h2>
+          <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Créneau</label>
+              <select value={selectedSlot} onChange={e => setSelectedSlot(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                {slots.map(s => <option key={s.id} value={s.id}>{s.time}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Enfants</label>
+              <Input type="number" min={1} value={childrenCount} onChange={e => setChildrenCount(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Formule</label>
+            <select value={selectedFormula} onChange={e => setSelectedFormula(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+              {formulas.map(f => <option key={f.id} value={f.id}>{f.name} — {f.pricePerChild}€</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Nom du client *</label>
+            <Input placeholder="Jean Dupont" value={clientName} onChange={e => setClientName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Téléphone</label>
+              <Input placeholder="0692..." value={clientPhone} onChange={e => setClientPhone(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+              <Input type="email" placeholder="jean@..." value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
+            <Input placeholder="Remarques..." value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+        </div>
+        <div className="flex gap-3 mt-5">
+          <Button variant="outline" onClick={onClose} className="flex-1">Annuler</Button>
+          <Button onClick={submit} disabled={loading} className="flex-1">
+            {loading ? "Création..." : "Ajouter"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Weekly planning ────────────────────────────────────────────────
-function WeeklyPlanning({ reservations }: { reservations: Reservation[] }) {
+function WeeklyPlanning({ reservations, token, onReload }: { reservations: Reservation[]; token: string | null; onReload?: () => void }) {
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{ date: string; slot: string } | null>(null);
 
   const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
 
@@ -203,6 +312,13 @@ function WeeklyPlanning({ reservations }: { reservations: Reservation[] }) {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       {selectedReservation && (
         <ReservationModal r={selectedReservation} onClose={() => setSelectedReservation(null)} />
+      )}
+      {quickAdd && token && (
+        <QuickAddBirthdayModal
+          token={token} date={quickAdd.date} slot={quickAdd.slot}
+          onClose={() => setQuickAdd(null)}
+          onCreated={() => { setQuickAdd(null); onReload?.(); }}
+        />
       )}
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -270,34 +386,36 @@ function WeeklyPlanning({ reservations }: { reservations: Reservation[] }) {
 
                   return (
                     <td key={day.toISOString()} className="px-2 py-2 align-top">
-                      {cell.length === 0 ? (
-                        <div className="h-8" />
-                      ) : (
-                        <div className="space-y-1">
-                          {cell.map(r => (
-                            <button key={r.id} type="button"
-                              onClick={() => setSelectedReservation(r)}
-                              className={cn(
-                                "w-full text-left rounded-lg border-l-4 px-2 py-1.5 text-xs transition-all hover:shadow-md hover:scale-[1.02] active:scale-100 cursor-pointer",
-                                r.status === "confirmed"
-                                  ? categoryColor[r.formula?.category ?? ""] ?? "border-l-gray-400 bg-gray-50"
-                                  : r.status === "cancelled"
-                                  ? "border-l-gray-300 bg-gray-50 opacity-50"
-                                  : "border-l-amber-400 bg-amber-50"
-                              )}>
-                              <p className="font-semibold text-gray-900 truncate max-w-[90px]">
-                                {r.clientName.split(" ")[0]}
-                              </p>
-                              <p className="text-gray-500 flex items-center gap-0.5 mt-0.5">
-                                <Users className="w-2.5 h-2.5" />
-                                {r.childrenCount}
-                                {r.fullPaymentPaid && <span className="ml-1 text-green-600">💶</span>}
-                                {r.depositPaid && !r.fullPaymentPaid && <span className="ml-1 text-blue-500">✓</span>}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div className="space-y-1 min-h-[36px]">
+                        {cell.map(r => (
+                          <button key={r.id} type="button"
+                            onClick={() => setSelectedReservation(r)}
+                            className={cn(
+                              "w-full text-left rounded-lg border-l-4 px-2 py-1.5 text-xs transition-all hover:shadow-md hover:scale-[1.02] active:scale-100 cursor-pointer",
+                              r.status === "confirmed"
+                                ? categoryColor[r.formula?.category ?? ""] ?? "border-l-gray-400 bg-gray-50"
+                                : r.status === "cancelled"
+                                ? "border-l-gray-300 bg-gray-50 opacity-50"
+                                : "border-l-amber-400 bg-amber-50"
+                            )}>
+                            <p className="font-semibold text-gray-900 truncate max-w-[90px]">
+                              {r.clientName.split(" ")[0]}
+                            </p>
+                            <p className="text-gray-500 flex items-center gap-0.5 mt-0.5">
+                              <Users className="w-2.5 h-2.5" />
+                              {r.childrenCount}
+                              {r.fullPaymentPaid && <span className="ml-1 text-green-600">💶</span>}
+                              {r.depositPaid && !r.fullPaymentPaid && <span className="ml-1 text-blue-500">✓</span>}
+                            </p>
+                          </button>
+                        ))}
+                        {/* Quick add */}
+                        <button
+                          onClick={() => setQuickAdd({ date: dayStr, slot })}
+                          className="w-full h-6 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-emerald-400 hover:text-emerald-500 transition-colors">
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
                     </td>
                   );
                 })}
@@ -465,7 +583,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Weekly planning */}
-          <WeeklyPlanning reservations={allWeekReservations} />
+          <WeeklyPlanning reservations={allWeekReservations} token={token} onReload={load} />
         </>
       )}
     </div>
