@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { formatDate, formatPrice } from "./utils";
-import { EMAIL_TEMPLATE_DEFAULTS } from "@/app/api/admin/email-template/route";
+import { EMAIL_TEMPLATE_DEFAULTS } from "./email-template-defaults";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
