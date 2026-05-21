@@ -66,9 +66,15 @@ export async function POST(req: NextRequest) {
 
   // Birthday reservation
   if (body.type === "birthday") {
-    const { clientName, clientEmail, clientPhone, formulaId, timeSlotId, date, childrenCount, notes } = body;
+    const { clientName, clientEmail, clientPhone, formulaId, timeSlotId, date, childrenCount, notes, customPrice, amountPaid, paymentNote } = body;
     const formula = await prisma.formula.findUnique({ where: { id: formulaId } });
-    const totalPrice = formula ? formula.pricePerChild * parseInt(childrenCount) : 0;
+    const autoPrice = formula ? formula.pricePerChild * parseInt(childrenCount) : 0;
+    const totalPrice = customPrice !== undefined && customPrice !== "" ? parseFloat(customPrice) : autoPrice;
+    const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : totalPrice;
+    const depositPaid = paid >= totalPrice || paid > 0;
+    const fullPaymentPaid = paid >= totalPrice;
+    const depositAmount = paid < totalPrice ? paid : 0;
+    const adminNotes = [notes, paymentNote ? `Paiement: ${paymentNote}` : ""].filter(Boolean).join(" | ");
     const reservation = await prisma.reservation.create({
       data: {
         reference, type: "birthday",
@@ -77,10 +83,13 @@ export async function POST(req: NextRequest) {
         formulaId, timeSlotId,
         date: new Date(date),
         childrenCount: parseInt(childrenCount),
-        totalPrice, basePrice: totalPrice,
-        paymentType: "admin", depositAmount: 0,
-        depositPaid: true, fullPaymentPaid: true,
-        status: "confirmed", notes,
+        totalPrice, basePrice: autoPrice,
+        paymentType: "admin", depositAmount,
+        depositPaid, fullPaymentPaid,
+        ...(depositPaid ? { depositPaidAt: new Date(), depositPaymentMethod: "onsite" } : {}),
+        ...(fullPaymentPaid ? { fullPaymentPaidAt: new Date() } : {}),
+        status: "confirmed",
+        notes: adminNotes || undefined,
       },
       include: { formula: true, timeSlot: true },
     });

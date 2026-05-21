@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard, CalendarDays, Settings, LogOut,
-  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail,
+  Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils, Mail, PartyPopper,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ export const useAdmin = () => useContext(AdminContext);
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/reservations", icon: CalendarDays, label: "Réservations" },
+  { href: "/admin/planning-anniversaire", icon: PartyPopper, label: "Planning Anniversaire" },
   { href: "/admin/planning-futsal", icon: Trophy, label: "Planning Futsal" },
   { href: "/admin/creneaux", icon: Clock, label: "Créneaux" },
   { href: "/admin/formules", icon: Utensils, label: "Formules & Tarifs" },
