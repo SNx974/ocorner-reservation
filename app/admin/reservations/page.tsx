@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { formatPrice, formatDate, formatDateTime, getStatusLabel, getStatusColor } from "@/lib/utils";
 import {
   Search, CheckCircle, XCircle, Banknote, Phone, Mail,
-  CreditCard, Loader2, ChevronDown, RefreshCw, RotateCcw,
+  CreditCard, Loader2, ChevronDown, RefreshCw, RotateCcw, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -174,6 +174,18 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
     onRefresh();
   }
 
+  async function deleteReservation() {
+    if (!confirm(`Supprimer définitivement la réservation de ${r.clientName} (${r.reference}) ?`)) return;
+    setLoading(true);
+    await fetch("/api/admin/reservations", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ id: r.id }),
+    });
+    setLoading(false);
+    onRefresh();
+  }
+
   const statusColor = getStatusColor(r.status);
   const isCancelled = r.status === "cancelled" || r.status === "expired";
   const isConfirmed = r.status === "confirmed";
@@ -312,6 +324,15 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
                   className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />
                   Réactiver
+                </Button>
+              )}
+
+              {/* Delete (only for cancelled/expired) */}
+              {isCancelled && (
+                <Button size="sm" variant="destructive" onClick={deleteReservation} disabled={loading}
+                  className="bg-red-100 text-red-700 border border-red-300 hover:bg-red-200">
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Supprimer
                 </Button>
               )}
             </div>

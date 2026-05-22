@@ -10,7 +10,7 @@ function auth(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const slots = await prisma.futsalTimeSlot.findMany({ orderBy: { hour: "asc" } });
+  const slots = await prisma.futsalTimeSlot.findMany({ orderBy: [{ hour: "asc" }, { minute: "asc" }] });
   return NextResponse.json(slots);
 }
 

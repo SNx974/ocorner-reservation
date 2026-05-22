@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   const slots = await prisma.futsalTimeSlot.findMany({
     where: { isActive: true },
-    orderBy: { hour: "asc" },
+    orderBy: [{ hour: "asc" }, { minute: "asc" }],
   });
 
   const start = new Date(date + "T00:00:00");
@@ -94,7 +94,8 @@ export async function GET(req: NextRequest) {
     return {
       id: slot.id,
       hour: slot.hour,
-      label: `${slot.hour}:00`,
+      minute: slot.minute ?? 0,
+      label: `${slot.hour}:${String(slot.minute ?? 0).padStart(2, "0")}`,
       totalCourts: maxCourts,
       availableCourts,
       available: availableCourts.length > 0,

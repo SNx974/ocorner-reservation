@@ -2,89 +2,156 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAdmin } from "../admin-context";
-import { formatPrice, getStatusLabel, getStatusColor } from "@/lib/utils";
+import { formatPrice, getStatusLabel } from "@/lib/utils";
 import {
-  ChevronLeft, ChevronRight, Users, Loader2,
-  RefreshCw, Trophy, Phone, Mail, X, Plus, Calendar,
+  ChevronLeft, ChevronRight, Users, Loader2, RefreshCw,
+  Trophy, Phone, Mail, X, Plus, Trash2, CreditCard, Banknote,
+  CheckCircle, Clock, Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  format, addDays, subDays, startOfWeek, eachDayOfInterval, isToday,
-} from "date-fns";
+import { format, addDays, subDays, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 
+interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean }
 interface FutsalRes {
   id: string; reference: string; clientName: string; clientPhone: string;
   clientEmail: string; date: string; status: string; totalPrice: number;
   playerCount: number; courtNumber: number; paymentType: string;
-  depositPaid: boolean; fullPaymentPaid: boolean; type?: string;
+  depositAmount: number; depositPaid: boolean; fullPaymentPaid: boolean;
+  notes?: string; adminNotes?: string; type?: string;
   formula?: { name: string; category: string } | null;
-  futsalTimeSlot: { hour: number };
+  futsalTimeSlot: { hour: number; minute: number };
   timeSlot?: { time: string } | null;
   participants: Array<{ id: string; name: string; amountDue: number; isPaid: boolean }>;
 }
 
-const badgeVariantMap: Record<string, "success" | "warning" | "destructive" | "secondary" | "info"> = {
-  green: "success", yellow: "warning", orange: "warning",
-  red: "destructive", gray: "secondary",
-};
+const COURTS = [1, 2, 3];
 
-function statusColorVariant(s: string): "success" | "warning" | "destructive" | "secondary" | "info" {
-  const c = s === "confirmed" ? "green" : s === "cancelled" || s === "expired" ? "red" : "yellow";
-  return badgeVariantMap[c] ?? "secondary";
+const courtConfig = [
+  { id: 1, color: "border-blue-400", bg: "bg-blue-50", text: "text-blue-700", headerBg: "bg-blue-500", light: "bg-blue-100" },
+  { id: 2, color: "border-violet-400", bg: "bg-violet-50", text: "text-violet-700", headerBg: "bg-violet-500", light: "bg-violet-100" },
+  { id: 3, color: "border-emerald-400", bg: "bg-emerald-50", text: "text-emerald-700", headerBg: "bg-emerald-500", light: "bg-emerald-100" },
+];
+
+function slotLabel(hour: number, minute: number) {
+  return `${hour}h${minute > 0 ? minute.toString().padStart(2, "0") : "00"}`;
 }
 
-const courtColors = [
-  "", "border-l-blue-500 bg-blue-50", "border-l-purple-500 bg-purple-50", "border-l-emerald-500 bg-emerald-50",
-];
-const bdayFootColor = "border-l-orange-500 bg-orange-50";
-
 // ── Detail modal ────────────────────────────────────────────────────
-function FutsalModal({ r, onClose }: { r: FutsalRes; onClose: () => void }) {
+function FutsalModal({
+  r, token, onClose, onRefresh,
+}: { r: FutsalRes; token: string; onClose: () => void; onRefresh: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const [payAction, setPayAction] = useState<"deposit" | "full" | null>(null);
+  const [payMethod, setPayMethod] = useState<"cb" | "especes">("especes");
+  const [saving, setSaving] = useState(false);
+
   const isBdayFoot = r.type === "birthday";
-  const paidCount = r.participants?.filter(p => p.isPaid).length ?? 0;
+  const cfg = courtConfig[(r.courtNumber ?? 1) - 1] ?? courtConfig[0];
+  const remaining = r.totalPrice - (r.depositPaid ? r.depositAmount : 0);
+
+  async function patch(action: string, extra?: Record<string, unknown>) {
+    setSaving(true);
+    await fetch("/api/admin/reservations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ id: r.id, action, notes: `Paiement: ${payMethod === "cb" ? "CB" : "Espèces"}`, ...extra }),
+    });
+    setSaving(false);
+    onRefresh();
+    onClose();
+  }
+
+  async function deleteRes() {
+    if (!confirm(`Supprimer définitivement la réservation de ${r.clientName} ?`)) return;
+    setDeleting(true);
+    await fetch("/api/admin/reservations", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ id: r.id }),
+    });
+    onRefresh();
+    onClose();
+  }
+
+  const isCancellable = r.status === "cancelled" || r.status === "expired";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white">
+        {/* Header */}
+        <div className={cn("flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white")}>
           <div>
             <h2 className="font-bold text-gray-900 flex items-center gap-2">
               {isBdayFoot ? "🎂⚽" : <Trophy className="w-4 h-4 text-blue-600" />}
               {r.clientName}
             </h2>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <code className="text-xs text-gray-400 font-mono">{r.reference}</code>
-              {isBdayFoot && (
-                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Anniversaire Foot</span>
+              {!isBdayFoot && (
+                <span className={cn("text-xs px-2 py-0.5 rounded-full font-bold text-white", cfg.headerBg)}>
+                  Terrain {r.courtNumber}
+                </span>
               )}
+              <Badge variant={r.status === "confirmed" ? "success" : r.status === "cancelled" ? "destructive" : "warning"}>
+                {getStatusLabel(r.status)}
+              </Badge>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
+
         <div className="p-5 space-y-4">
+          {/* Info grid */}
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : "bg-blue-50")}>
-              <p className="text-xs text-gray-400">{isBdayFoot ? "Créneau" : "Terrain"}</p>
-              <p className="font-bold text-lg">{isBdayFoot ? r.timeSlot?.time : `N°${r.courtNumber}`}</p>
+            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : cfg.bg)}>
+              <p className="text-xs text-gray-400">Créneau</p>
+              <p className="font-bold text-lg">{slotLabel(r.futsalTimeSlot.hour, r.futsalTimeSlot.minute)}</p>
             </div>
-            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : "bg-blue-50")}>
-              <p className="text-xs text-gray-400">{isBdayFoot ? "Formule" : "Créneau"}</p>
-              <p className="font-semibold text-gray-900">{isBdayFoot ? r.formula?.name : `${r.futsalTimeSlot.hour}:00`}</p>
+            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : cfg.bg)}>
+              <p className="text-xs text-gray-400">Joueurs</p>
+              <p className="font-semibold text-gray-900 flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-gray-400" />
+                {r.playerCount}
+              </p>
             </div>
-            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : "bg-blue-50")}>
-              <p className="text-xs text-gray-400">{isBdayFoot ? "Enfants" : "Joueurs"}</p>
-              <p className="font-semibold text-gray-900">{isBdayFoot ? `${r.playerCount ?? "—"} enfants` : r.playerCount}</p>
-            </div>
-            <div className={cn("rounded-xl p-3", isBdayFoot ? "bg-orange-50" : "bg-blue-50")}>
+            <div className="rounded-xl p-3 bg-gray-50">
               <p className="text-xs text-gray-400">Total</p>
               <p className="font-bold text-emerald-700">{formatPrice(r.totalPrice)}</p>
             </div>
+            <div className="rounded-xl p-3 bg-gray-50">
+              <p className="text-xs text-gray-400">Reste à payer</p>
+              <p className={cn("font-bold", r.fullPaymentPaid ? "text-green-600" : "text-amber-600")}>
+                {r.fullPaymentPaid ? "Soldé ✓" : formatPrice(remaining)}
+              </p>
+            </div>
           </div>
+
+          {/* Payment status */}
+          <div className="rounded-xl border border-gray-100 p-3 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Acompte</span>
+              <span className={r.depositPaid ? "text-green-600 font-semibold" : "text-amber-600"}>
+                {r.depositAmount > 0 ? formatPrice(r.depositAmount) : "—"} {r.depositPaid ? "✓ reçu" : ""}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Paiement complet</span>
+              <span className={r.fullPaymentPaid ? "text-green-600 font-semibold" : "text-gray-400"}>
+                {r.fullPaymentPaid ? "✓ Payé" : "En attente"}
+              </span>
+            </div>
+            {r.adminNotes && (
+              <p className="text-xs text-gray-400 italic pt-1 border-t">{r.adminNotes}</p>
+            )}
+          </div>
+
+          {/* Contact */}
           <div className="space-y-2 text-sm">
             <a href={`tel:${r.clientPhone}`} className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <Phone className="w-4 h-4 text-gray-400" />{r.clientPhone}
@@ -93,27 +160,59 @@ function FutsalModal({ r, onClose }: { r: FutsalRes; onClose: () => void }) {
               <Mail className="w-4 h-4 text-gray-400 shrink-0" />{r.clientEmail}
             </a>
           </div>
-          {!isBdayFoot && r.participants?.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Participants ({paidCount}/{r.participants.length} payés)</p>
-              <div className="space-y-1.5">
-                {r.participants.map(p => (
-                  <div key={p.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-800">{p.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs">{formatPrice(p.amountDue)}</span>
-                      {p.isPaid
-                        ? <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">✓ Payé</span>
-                        : <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">En attente</span>}
-                    </div>
-                  </div>
-                ))}
+
+          {/* Payment actions */}
+          {!r.fullPaymentPaid && r.status === "confirmed" && (
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Enregistrer un paiement</p>
+              {/* Method selector */}
+              <div className="flex gap-2">
+                <button onClick={() => setPayMethod("cb")}
+                  className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border-2 text-sm font-medium transition-all",
+                    payMethod === "cb" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                  <CreditCard className="w-4 h-4" /> CB
+                </button>
+                <button onClick={() => setPayMethod("especes")}
+                  className={cn("flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border-2 text-sm font-medium transition-all",
+                    payMethod === "especes" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 text-gray-600 hover:border-gray-300")}>
+                  <Banknote className="w-4 h-4" /> Espèces
+                </button>
+              </div>
+              <div className="flex gap-2">
+                {!r.depositPaid && r.depositAmount > 0 && (
+                  <button onClick={() => patch("mark_deposit_paid")} disabled={saving}
+                    className="flex-1 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm font-semibold hover:bg-amber-100 transition-all">
+                    Acompte {formatPrice(r.depositAmount)}
+                  </button>
+                )}
+                <button onClick={() => patch("mark_fully_paid")} disabled={saving}
+                  className="flex-1 p-2.5 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-semibold hover:bg-green-100 transition-all flex items-center justify-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> Soldé {formatPrice(remaining)}
+                </button>
               </div>
             </div>
           )}
-          <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-            <Badge variant={statusColorVariant(r.status)}>{getStatusLabel(r.status)}</Badge>
-            {r.fullPaymentPaid && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">💶 Payé</span>}
+          {r.fullPaymentPaid && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-semibold">
+              <CheckCircle className="w-4 h-4" /> Paiement complet enregistré
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2 border-t border-gray-100">
+            {r.status === "confirmed" && (
+              <button onClick={() => patch("cancel")} disabled={saving}
+                className="flex-1 py-2 rounded-xl border-2 border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-all">
+                Annuler
+              </button>
+            )}
+            {isCancellable && (
+              <button onClick={deleteRes} disabled={deleting}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium hover:bg-red-100 transition-all">
+                <Trash2 className="w-4 h-4" />
+                {deleting ? "..." : "Supprimer"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -123,28 +222,36 @@ function FutsalModal({ r, onClose }: { r: FutsalRes; onClose: () => void }) {
 
 // ── Quick add modal ──────────────────────────────────────────────────
 function QuickAddModal({
-  token, date, hour, onClose, onCreated,
-}: { token: string; date: string; hour: number; onClose: () => void; onCreated: () => void }) {
-  const [futsalSlots, setFutsalSlots] = useState<{ id: string; hour: number }[]>([]);
+  token, date, hour, minute, court: defaultCourt, onClose, onCreated,
+}: { token: string; date: string; hour: number; minute: number; court: number; onClose: () => void; onCreated: () => void }) {
+  const [futsalSlots, setFutsalSlots] = useState<FutsalSlot[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState("");
-  const [court, setCourt] = useState(1);
+  const [court, setCourt] = useState(defaultCourt);
   const [playerCount, setPlayerCount] = useState(10);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cb" | "especes" | "none">("none");
+  const [amountPaid, setAmountPaid] = useState("");
+  const [courtPrice, setCourtPrice] = useState(110);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("/api/timeslots").then(r => r.json()).then(() => {});
-    fetch("/api/futsal/availability?date=" + date)
-      .then(r => r.json()).then((slots: { id: string; hour: number }[]) => {
-        setFutsalSlots(slots);
-        const found = slots.find(s => s.hour === hour);
-        if (found) setSelectedSlotId(found.id);
-      });
-  }, [date, hour]);
+    Promise.all([
+      fetch("/api/futsal/availability?date=" + date).then(r => r.json()),
+      fetch("/api/admin/settings", { headers: { "x-admin-token": token } }).then(r => r.json()),
+    ]).then(([slots, settings]) => {
+      setFutsalSlots(slots);
+      const found = slots.find((s: FutsalSlot) => s.hour === hour && s.minute === minute);
+      if (found) setSelectedSlotId(found.id);
+      else if (slots.length) setSelectedSlotId(slots[0].id);
+      const price = parseFloat(settings?.futsal_court_price ?? "110");
+      setCourtPrice(price);
+      setAmountPaid(price.toString());
+    });
+  }, [date, hour, minute, token]);
 
   async function submit() {
     if (!clientName.trim()) { setError("Nom du client requis"); return; }
@@ -156,7 +263,10 @@ function QuickAddModal({
       body: JSON.stringify({
         type: "futsal", clientName, clientEmail, clientPhone,
         futsalTimeSlotId: selectedSlotId, courtNumber: court,
-        date, playerCount, notes,
+        date, playerCount,
+        notes,
+        paymentMethod: paymentMethod !== "none" ? paymentMethod : undefined,
+        amountPaid: paymentMethod !== "none" ? parseFloat(amountPaid) || courtPrice : courtPrice,
       }),
     });
     if (res.ok) { onCreated(); onClose(); }
@@ -164,36 +274,53 @@ function QuickAddModal({
     setLoading(false);
   }
 
+  const paid = parseFloat(amountPaid) || 0;
+  const remaining = courtPrice - paid;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-bold text-gray-900 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-600" /> Réservation futsal — {format(new Date(date + "T12:00:00"), "d MMM", { locale: fr })} {hour}:00
+            <Plus className="w-5 h-5 text-blue-600" />
+            Réservation futsal — {format(new Date(date + "T12:00:00"), "d MMM", { locale: fr })}
           </h2>
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="space-y-3">
+          {/* Créneau + Terrain */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Créneau</label>
               <select value={selectedSlotId} onChange={e => setSelectedSlotId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                {futsalSlots.map(s => <option key={s.id} value={s.id}>{s.hour}:00</option>)}
+                {futsalSlots.map(s => (
+                  <option key={s.id} value={s.id}>{slotLabel(s.hour, s.minute)}</option>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Terrain</label>
-              <select value={court} onChange={e => setCourt(parseInt(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                {[1, 2, 3].map(c => <option key={c} value={c}>Terrain {c}</option>)}
-              </select>
+              <div className="flex gap-1.5">
+                {COURTS.map(c => {
+                  const cfg = courtConfig[c - 1];
+                  return (
+                    <button key={c} type="button" onClick={() => setCourt(c)}
+                      className={cn(
+                        "flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all",
+                        court === c
+                          ? cn(cfg.light, cfg.text, cfg.color)
+                          : "border-gray-200 text-gray-500 hover:border-gray-300"
+                      )}>
+                      T{c}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Joueurs</label>
-            <Input type="number" min={1} value={playerCount} onChange={e => setPlayerCount(parseInt(e.target.value))} />
-          </div>
+
+          {/* Client */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Nom du client *</label>
             <Input placeholder="Jean Dupont" value={clientName} onChange={e => setClientName(e.target.value)} />
@@ -204,10 +331,50 @@ function QuickAddModal({
               <Input placeholder="0692..." value={clientPhone} onChange={e => setClientPhone(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
-              <Input type="email" placeholder="jean@..." value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Joueurs</label>
+              <Input type="number" min={1} value={playerCount} onChange={e => setPlayerCount(parseInt(e.target.value))} />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+            <Input type="email" placeholder="jean@..." value={clientEmail} onChange={e => setClientEmail(e.target.value)} />
+          </div>
+
+          {/* Paiement */}
+          <div className="pt-1 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 mb-2 uppercase">Paiement sur place</p>
+            <div className="flex gap-2 mb-2">
+              {([["none", "Non payé", "gray"], ["cb", "CB", "blue"], ["especes", "Espèces", "amber"]] as const).map(([val, label, color]) => (
+                <button key={val} type="button" onClick={() => setPaymentMethod(val as typeof paymentMethod)}
+                  className={cn(
+                    "flex-1 py-2 rounded-xl border-2 text-xs font-semibold transition-all",
+                    paymentMethod === val
+                      ? color === "gray" ? "border-gray-400 bg-gray-100 text-gray-700"
+                        : color === "blue" ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-amber-500 bg-amber-50 text-amber-700"
+                      : "border-gray-200 text-gray-500 hover:border-gray-300"
+                  )}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {paymentMethod !== "none" && (
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Montant encaissé (€)</label>
+                  <Input type="number" min={0} max={courtPrice} step={5}
+                    value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+                </div>
+                <div className="text-right pb-2">
+                  <p className="text-xs text-gray-400">Total: {formatPrice(courtPrice)}</p>
+                  <p className={cn("text-xs font-bold", remaining <= 0 ? "text-green-600" : "text-amber-600")}>
+                    {remaining <= 0 ? "Soldé ✓" : `Reste: ${formatPrice(remaining)}`}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Notes</label>
             <Input placeholder="Remarques..." value={notes} onChange={e => setNotes(e.target.value)} />
@@ -217,6 +384,7 @@ function QuickAddModal({
         <div className="flex gap-3 mt-5">
           <Button variant="outline" onClick={onClose} className="flex-1">Annuler</Button>
           <Button onClick={submit} disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             {loading ? "Création..." : "Ajouter"}
           </Button>
         </div>
@@ -229,47 +397,21 @@ function QuickAddModal({
 export default function FutsalPlanningPage() {
   const { token } = useAdmin();
   const [reservations, setReservations] = useState<FutsalRes[]>([]);
+  const [futsalSlots, setFutsalSlots] = useState<FutsalSlot[]>([]);
   const [loading, setLoading] = useState(true);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [selected, setSelected] = useState<FutsalRes | null>(null);
-  const [quickAdd, setQuickAdd] = useState<{ date: string; hour: number } | null>(null);
+  const [quickAdd, setQuickAdd] = useState<{ date: string; hour: number; minute: number; court: number } | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    // Load both futsal and birthday+foot reservations
-    const [futsalRes, bdayRes] = await Promise.all([
-      fetch("/api/admin/reservations?limit=500&type=futsal", { headers: { "x-admin-token": token } }).then(r => r.json()),
-      fetch("/api/admin/reservations?limit=500&type=birthday", { headers: { "x-admin-token": token } }).then(r => r.json()),
+    const [futsalRes, slotsRes] = await Promise.all([
+      fetch(`/api/admin/reservations?limit=500&type=futsal`, { headers: { "x-admin-token": token } }).then(r => r.json()),
+      fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }).then(r => r.json()),
     ]);
-
-    const futsalList: FutsalRes[] = (futsalRes.reservations ?? []).filter((r: FutsalRes) => r.futsalTimeSlot);
-
-    // Birthday foot reservations — map to futsal hours
-    const bdayFootList: FutsalRes[] = (bdayRes.reservations ?? [])
-      .filter((r: FutsalRes & { formula?: { category: string } | null }) =>
-        r.formula && ["marmaille_foot", "foot"].includes(r.formula.category) && r.timeSlot
-      )
-      .flatMap((r: FutsalRes & { timeSlot: { time: string } }) => {
-        // Parse time slot to hours
-        const match = r.timeSlot.time.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
-        if (!match) return [];
-        const startH = parseInt(match[1]);
-        const endH = parseInt(match[3]);
-        const endM = parseInt(match[4]);
-        const hours: number[] = [];
-        for (let h = startH; h < endH + (endM > 0 ? 1 : 0); h++) hours.push(h);
-        if (endM === 0 && hours[hours.length - 1] === endH) hours.pop();
-        // Create one "virtual" futsal entry per hour
-        return hours.map(h => ({
-          ...r,
-          futsalTimeSlot: { hour: h },
-          courtNumber: 1, // birthday foot uses court 1
-          playerCount: r.playerCount ?? 0,
-        }));
-      });
-
-    setReservations([...futsalList, ...bdayFootList]);
+    setReservations(futsalRes.reservations ?? []);
+    setFutsalSlots(slotsRes.filter((s: FutsalSlot) => s.isActive));
     setLoading(false);
   }, [token]);
 
@@ -277,148 +419,252 @@ export default function FutsalPlanningPage() {
 
   if (!token) return <p className="p-6 text-gray-500">Veuillez vous connecter.</p>;
 
-  const days = eachDayOfInterval({ start: weekStart, end: addDays(weekStart, 6) });
+  // Get active hours (slots active in DB)
+  const activeSlotKeys = futsalSlots.map(s => `${s.hour}:${s.minute}`);
 
-  // Group by day + hour + court
-  const grouped: Record<string, Record<number, Record<number, FutsalRes[]>>> = {};
-  for (const r of reservations) {
-    const day = r.date.slice(0, 10);
-    const hour = r.futsalTimeSlot.hour;
-    const court = r.courtNumber;
-    if (!grouped[day]) grouped[day] = {};
-    if (!grouped[day][hour]) grouped[day][hour] = {};
-    if (!grouped[day][hour][court]) grouped[day][hour][court] = [];
-    grouped[day][hour][court].push(r);
+  // Filter reservations for selected date
+  const dayReservations = reservations.filter(r =>
+    r.date.slice(0, 10) === selectedDate &&
+    r.status !== "cancelled" && r.status !== "expired"
+  );
+
+  // Build map: hour:minute -> court -> reservation
+  const grid: Record<string, Record<number, FutsalRes>> = {};
+  for (const r of dayReservations) {
+    const key = `${r.futsalTimeSlot.hour}:${r.futsalTimeSlot.minute ?? 0}`;
+    if (!grid[key]) grid[key] = {};
+    grid[key][r.courtNumber] = r;
   }
 
-  const HOURS = Array.from({ length: 13 }, (_, i) => 10 + i); // 10 to 22
+  // Week strip: 7 days centered on selected
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(new Date(selectedDate + "T12:00:00"), i - 3);
+    return format(d, "yyyy-MM-dd");
+  });
+
+  // Count reservations per day for week strip
+  const dayCount: Record<string, number> = {};
+  for (const r of reservations) {
+    if (r.status === "cancelled" || r.status === "expired") continue;
+    const d = r.date.slice(0, 10);
+    dayCount[d] = (dayCount[d] ?? 0) + 1;
+  }
+
+  const today = format(new Date(), "yyyy-MM-dd");
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {selected && <FutsalModal r={selected} onClose={() => setSelected(null)} />}
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      {selected && token && (
+        <FutsalModal r={selected} token={token} onClose={() => setSelected(null)} onRefresh={load} />
+      )}
       {quickAdd && token && (
         <QuickAddModal
           token={token} date={quickAdd.date} hour={quickAdd.hour}
-          onClose={() => setQuickAdd(null)} onCreated={load}
+          minute={quickAdd.minute} court={quickAdd.court}
+          onClose={() => setQuickAdd(null)} onCreated={() => { setQuickAdd(null); load(); }}
         />
       )}
 
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Trophy className="w-6 h-6 text-blue-600" /> Planning Futsal
           </h1>
-          <p className="text-gray-500 text-sm">Vue par semaine — 3 terrains</p>
+          <p className="text-gray-500 text-sm">Vue journalière — 3 terrains</p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Legend */}
-          <div className="hidden sm:flex gap-3 text-xs text-gray-500 bg-white border border-gray-100 rounded-xl px-3 py-2">
-            {[1, 2, 3].map(c => (
-              <span key={c} className="flex items-center gap-1">
-                <span className={cn("w-3 h-3 rounded border-l-4 inline-block", courtColors[c])} />T{c}
-              </span>
-            ))}
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded border-l-4 inline-block border-l-orange-500 bg-orange-50" />
-              Anniv. foot
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} /> Actualiser
+            <RefreshCw className={cn("w-4 h-4 mr-1", loading && "animate-spin")} /> Actualiser
           </Button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Week nav */}
-        <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-100">
-          <button onClick={() => setWeekStart(d => subDays(d, 7))}
+      {/* Day selector strip */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-5 overflow-hidden">
+        <div className="flex items-center gap-2 p-3 border-b border-gray-100">
+          <button onClick={() => setSelectedDate(d => format(subDays(new Date(d + "T12:00:00"), 1), "yyyy-MM-dd"))}
             className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm font-medium text-gray-600 min-w-[150px] text-center">
-            {format(weekStart, "d MMM", { locale: fr })} – {format(addDays(weekStart, 6), "d MMM yyyy", { locale: fr })}
-          </span>
-          <button onClick={() => setWeekStart(d => addDays(d, 7))}
+          <div className="flex-1 flex gap-1 overflow-x-auto pb-1">
+            {weekDays.map(d => {
+              const date = new Date(d + "T12:00:00");
+              const isSel = d === selectedDate;
+              const isTod = d === today;
+              const count = dayCount[d] ?? 0;
+              return (
+                <button key={d} onClick={() => setSelectedDate(d)}
+                  className={cn(
+                    "flex-1 min-w-[70px] flex flex-col items-center py-2 px-1 rounded-xl transition-all border-2",
+                    isSel ? "border-blue-500 bg-blue-600 text-white" :
+                    isTod ? "border-blue-200 bg-blue-50 text-blue-700" :
+                    "border-transparent hover:bg-gray-50 text-gray-700"
+                  )}>
+                  <span className={cn("text-[10px] uppercase font-semibold", isSel ? "text-blue-200" : "text-gray-400")}>
+                    {format(date, "EEE", { locale: fr })}
+                  </span>
+                  <span className="text-base font-bold">{format(date, "d")}</span>
+                  {count > 0 && (
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-bold mt-0.5",
+                      isSel ? "bg-blue-500 text-white" : "bg-blue-100 text-blue-700")}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={() => setSelectedDate(d => format(addDays(new Date(d + "T12:00:00"), 1), "yyyy-MM-dd"))}
             className="w-8 h-8 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center">
             <ChevronRight className="w-4 h-4" />
           </button>
-          <button onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-medium">
+          <button onClick={() => setSelectedDate(today)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-medium whitespace-nowrap">
             Aujourd'hui
           </button>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="w-16 px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase">H</th>
-                  {days.map(day => (
-                    <th key={day.toISOString()} className={cn("px-2 py-3 text-center text-sm font-semibold", isToday(day) ? "text-blue-700" : "text-gray-700")}>
-                      <div className={cn("rounded-lg px-2 py-1 inline-block", isToday(day) && "bg-blue-100")}>
-                        <div className="text-xs font-normal text-gray-400 capitalize">{format(day, "EEE", { locale: fr })}</div>
-                        <div>{format(day, "d")}</div>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {HOURS.map((hour, hi) => (
-                  <tr key={hour} className={cn("border-b border-gray-50", hi % 2 === 0 ? "bg-white" : "bg-gray-50/40")}>
-                    <td className="px-3 py-2 text-xs font-bold text-gray-400">{hour}h</td>
-                    {days.map(day => {
-                      const dayStr = format(day, "yyyy-MM-dd");
-                      const courtsAtHour = grouped[dayStr]?.[hour] ?? {};
+        {/* Date display */}
+        <div className="px-4 py-2 flex items-center gap-2 bg-gray-50 border-b border-gray-100">
+          <Calendar className="w-4 h-4 text-blue-500" />
+          <span className="text-sm font-semibold text-gray-700 capitalize">
+            {format(new Date(selectedDate + "T12:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+          </span>
+          {isToday(new Date(selectedDate + "T12:00:00")) && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Aujourd'hui</span>
+          )}
+        </div>
 
-                      return (
-                        <td key={day.toISOString()} className="px-1.5 py-1.5 align-top min-w-[100px]">
-                          <div className="space-y-1 min-h-[36px]">
-                            {/* Court 1, 2, 3 */}
-                            {[1, 2, 3].map(court => {
-                              const entries = (courtsAtHour[court] ?? []).filter(r => r.status !== "cancelled" && r.status !== "expired");
-                              return entries.map(r => {
-                                const isBday = r.type === "birthday";
-                                return (
-                                  <button key={r.id} type="button" onClick={() => setSelected(r)}
-                                    className={cn(
-                                      "w-full text-left rounded-lg border-l-4 px-2 py-1 text-xs transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer",
-                                      isBday ? bdayFootColor : (courtColors[court] ?? "border-l-gray-400 bg-gray-50"),
-                                    )}>
-                                    <p className="font-semibold text-gray-900 truncate leading-tight">
-                                      {isBday ? "🎂⚽" : `T${court}`} {r.clientName.split(" ")[0]}
-                                    </p>
-                                    <p className="text-gray-500 flex items-center gap-0.5 mt-0.5 leading-tight">
-                                      <Users className="w-2.5 h-2.5" />
-                                      {isBday ? `Anniv. foot` : `${r.playerCount}j`}
-                                    </p>
-                                  </button>
-                                );
-                              });
-                            })}
-                            {/* Quick add button */}
-                            <button
-                              onClick={() => setQuickAdd({ date: dayStr, hour })}
-                              className="w-full h-6 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-blue-300 hover:text-blue-400 transition-colors opacity-0 hover:opacity-100 group-hover:opacity-100">
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* Terrain legend */}
+        <div className="px-4 py-2 flex items-center gap-4 text-xs text-gray-500">
+          {COURTS.map(c => {
+            const cfg = courtConfig[c - 1];
+            return (
+              <span key={c} className="flex items-center gap-1.5">
+                <span className={cn("w-3 h-3 rounded border-l-4 inline-block", cfg.color, cfg.bg)} />
+                <span className={cn("font-semibold", cfg.text)}>Terrain {c}</span>
+              </span>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Main grid: hours × terrains */}
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Header row */}
+          <div className="grid grid-cols-4 border-b border-gray-200 bg-gray-50">
+            <div className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">Heure</div>
+            {COURTS.map(c => {
+              const cfg = courtConfig[c - 1];
+              return (
+                <div key={c} className={cn("px-3 py-3 flex items-center justify-center gap-2 text-sm font-bold text-white rounded-none", cfg.headerBg)}>
+                  <Trophy className="w-4 h-4" /> Terrain {c}
+                </div>
+              );
+            })}
+          </div>
+
+          {futsalSlots.length === 0 ? (
+            <p className="text-center text-gray-400 py-12 text-sm">Aucun créneau actif configuré</p>
+          ) : (
+            futsalSlots.map((slot, idx) => {
+              const key = `${slot.hour}:${slot.minute}`;
+              const slotGrid = grid[key] ?? {};
+              const isEven = idx % 2 === 0;
+              const isPast = isToday(new Date(selectedDate + "T12:00:00")) &&
+                new Date() > new Date(new Date().toDateString() + ` ${slot.hour}:${String(slot.minute).padStart(2,"0")}:00`);
+
+              return (
+                <div key={slot.id}
+                  className={cn("grid grid-cols-4 border-b border-gray-50 transition-colors",
+                    isEven ? "bg-white" : "bg-gray-50/40",
+                    isPast && "opacity-60"
+                  )}>
+                  {/* Hour label */}
+                  <div className="px-4 py-3 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-gray-300" />
+                    <span className={cn("text-sm font-bold", isPast ? "text-gray-400" : "text-gray-700")}>
+                      {slotLabel(slot.hour, slot.minute)}
+                    </span>
+                    {isPast && <span className="text-[9px] text-gray-400 bg-gray-100 px-1 rounded">passé</span>}
+                  </div>
+
+                  {/* Terrain cells */}
+                  {COURTS.map(court => {
+                    const r = slotGrid[court];
+                    const cfg = courtConfig[court - 1];
+                    return (
+                      <div key={court} className="px-2 py-2">
+                        {r ? (
+                          <button type="button" onClick={() => setSelected(r)}
+                            className={cn(
+                              "w-full text-left rounded-xl border-l-4 px-3 py-2.5 text-sm transition-all hover:shadow-md hover:scale-[1.01] cursor-pointer",
+                              cfg.color, cfg.bg
+                            )}>
+                            <div className="flex items-start justify-between gap-1">
+                              <p className="font-bold text-gray-900 truncate leading-tight">{r.clientName.split(" ")[0]}</p>
+                              <span className={cn("shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white mt-0.5", cfg.headerBg)}>
+                                T{court}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                              <Users className="w-2.5 h-2.5" />
+                              {r.playerCount}j
+                              {r.fullPaymentPaid && <span className="ml-1 text-green-600 font-bold">✓</span>}
+                              {r.depositPaid && !r.fullPaymentPaid && <span className="ml-1 text-amber-500">~</span>}
+                              {!r.depositPaid && !r.fullPaymentPaid && <span className="ml-1 text-red-400">!</span>}
+                            </p>
+                            {!r.fullPaymentPaid && (
+                              <p className="text-[10px] text-amber-600 font-semibold mt-0.5">
+                                Reste: {formatPrice(r.totalPrice - r.depositAmount)}
+                              </p>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setQuickAdd({ date: selectedDate, hour: slot.hour, minute: slot.minute, court })}
+                            className={cn(
+                              "w-full h-[72px] rounded-xl border-2 border-dashed flex items-center justify-center transition-all",
+                              cfg.color.replace("border-", "border-") + " opacity-30",
+                              "hover:opacity-100 hover:bg-gray-50 group"
+                            )}>
+                            <Plus className={cn("w-5 h-5 text-gray-300 group-hover:text-gray-500")} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Summary bar */}
+      {dayReservations.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {COURTS.map(c => {
+            const cfg = courtConfig[c - 1];
+            const courtRes = dayReservations.filter(r => r.courtNumber === c);
+            const totalRevenue = courtRes.reduce((s, r) => s + r.totalPrice, 0);
+            const paid = courtRes.filter(r => r.fullPaymentPaid).length;
+            return (
+              <div key={c} className={cn("rounded-xl border-l-4 p-3 bg-white shadow-sm", cfg.color)}>
+                <p className={cn("text-xs font-bold uppercase", cfg.text)}>Terrain {c}</p>
+                <p className="text-lg font-bold text-gray-900 mt-0.5">{courtRes.length} rés.</p>
+                <p className="text-xs text-gray-500">{formatPrice(totalRevenue)} · {paid}/{courtRes.length} soldés</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

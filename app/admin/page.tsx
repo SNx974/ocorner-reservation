@@ -6,7 +6,7 @@ import { formatPrice, formatDate, getStatusLabel, getStatusColor } from "@/lib/u
 import {
   TrendingUp, Calendar, AlertTriangle, CheckCircle,
   Loader2, RefreshCw, ChevronLeft, ChevronRight,
-  Users, Clock, Phone, Mail, CreditCard, X, Plus,
+  Users, Clock, Phone, Mail, CreditCard, X, Plus, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -301,6 +301,161 @@ function QuickAddBirthdayModal({
   );
 }
 
+// ── Today section: split Futsal + Anniversaire ────────────────────
+const COURT_COLORS = [
+  { bg: "bg-blue-50", border: "border-blue-400", text: "text-blue-700", badge: "bg-blue-500" },
+  { bg: "bg-violet-50", border: "border-violet-400", text: "text-violet-700", badge: "bg-violet-500" },
+  { bg: "bg-emerald-50", border: "border-emerald-400", text: "text-emerald-700", badge: "bg-emerald-500" },
+];
+
+function PayBadge({ r }: { r: Reservation }) {
+  const remaining = r.totalPrice - (r.depositPaid ? r.depositAmount : 0);
+  if (r.fullPaymentPaid) return <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">Soldé ✓</span>;
+  if (r.depositPaid) return <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">Reste {formatPrice(remaining)}</span>;
+  return <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">! {formatPrice(r.totalPrice)}</span>;
+}
+
+function TodaySection({ reservations }: { reservations: Reservation[] }) {
+  const futsal = reservations.filter(r => r.type === "futsal" && r.status !== "cancelled" && r.status !== "expired");
+  const birthday = reservations.filter(r => r.type !== "futsal" && r.status !== "cancelled" && r.status !== "expired");
+
+  // Build futsal grid: hour -> court -> reservation
+  const futsalGrid: Record<number, Record<number, Reservation>> = {};
+  for (const r of futsal) {
+    const h = r.futsalTimeSlot?.hour ?? 0;
+    const c = r.courtNumber ?? 1;
+    if (!futsalGrid[h]) futsalGrid[h] = {};
+    futsalGrid[h][c] = r;
+  }
+  const futsalHours = Object.keys(futsalGrid).map(Number).sort((a, b) => a - b);
+
+  // Birthday: group by slot time
+  const bdayBySlot: Record<string, Reservation[]> = {};
+  for (const r of birthday) {
+    const slot = r.timeSlot?.time ?? "—";
+    if (!bdayBySlot[slot]) bdayBySlot[slot] = [];
+    bdayBySlot[slot].push(r);
+  }
+  const bdaySlots = Object.keys(bdayBySlot).sort();
+
+  if (reservations.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 p-10 text-center text-gray-400">
+        <Calendar className="w-10 h-10 mx-auto mb-2 opacity-30" />
+        <p>Aucune réservation aujourd'hui</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      {/* ── Futsal ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-blue-50">
+          <h2 className="font-bold text-blue-900 flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-blue-600" />
+            ⚽ Futsal aujourd'hui
+            <span className="text-sm font-normal text-blue-600">({futsal.length})</span>
+          </h2>
+          <Link href="/admin/planning-futsal">
+            <Button variant="outline" size="sm" className="text-blue-700 border-blue-200 hover:bg-blue-100 text-xs">Planning →</Button>
+          </Link>
+        </div>
+        {futsalHours.length === 0 ? (
+          <p className="text-center text-gray-400 py-8 text-sm">Aucun futsal aujourd'hui</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {futsalHours.map(hour => {
+              const courts = futsalGrid[hour];
+              return (
+                <div key={hour} className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-sm font-bold text-gray-700">{hour}h00</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map(court => {
+                      const r = courts[court];
+                      const cfg = COURT_COLORS[court - 1];
+                      return r ? (
+                        <div key={court} className={cn("rounded-xl border-l-4 p-2.5 text-xs", cfg.border, cfg.bg)}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={cn("font-bold text-[10px] px-1.5 py-0.5 rounded-full text-white", cfg.badge)}>T{court}</span>
+                            <PayBadge r={r} />
+                          </div>
+                          <p className={cn("font-bold truncate text-sm", cfg.text)}>{r.clientName.split(" ")[0]}</p>
+                          <p className="text-gray-500 flex items-center gap-0.5 mt-0.5">
+                            <Users className="w-2.5 h-2.5" />{r.playerCount}j
+                          </p>
+                        </div>
+                      ) : (
+                        <div key={court} className="rounded-xl border-2 border-dashed border-gray-100 flex items-center justify-center py-3 text-gray-300">
+                          <span className="text-[10px]">T{court} libre</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Anniversaires ── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-emerald-50">
+          <h2 className="font-bold text-emerald-900 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-emerald-600" />
+            🎂 Anniversaires aujourd'hui
+            <span className="text-sm font-normal text-emerald-600">({birthday.length})</span>
+          </h2>
+          <Link href="/admin/planning-anniversaire">
+            <Button variant="outline" size="sm" className="text-emerald-700 border-emerald-200 hover:bg-emerald-100 text-xs">Planning →</Button>
+          </Link>
+        </div>
+        {bdaySlots.length === 0 ? (
+          <p className="text-center text-gray-400 py-8 text-sm">Aucun anniversaire aujourd'hui</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {bdaySlots.map(slot => (
+              <div key={slot} className="px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-sm font-bold text-gray-700">{slot}</span>
+                </div>
+                <div className="space-y-2">
+                  {bdayBySlot[slot].map(r => {
+                    const catColor: Record<string, string> = {
+                      marmaille: "border-emerald-400 bg-emerald-50",
+                      marmaille_foot: "border-purple-400 bg-purple-50",
+                      foot: "border-blue-400 bg-blue-50",
+                    };
+                    return (
+                      <div key={r.id} className={cn("rounded-xl border-l-4 px-3 py-2 text-sm",
+                        catColor[r.formula?.category ?? ""] ?? "border-gray-300 bg-gray-50")}>
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-gray-900">{r.clientName}</p>
+                          <PayBadge r={r} />
+                        </div>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                          <span className="flex items-center gap-1"><Users className="w-2.5 h-2.5" />{r.childrenCount} enfants</span>
+                          <span>{r.formula?.name}</span>
+                          <span className="font-semibold text-emerald-700">{formatPrice(r.totalPrice)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Weekly planning ────────────────────────────────────────────────
 function WeeklyPlanning({ reservations, token, onReload }: { reservations: Reservation[]; token: string | null; onReload?: () => void }) {
   const [weekStart, setWeekStart] = useState(() =>
@@ -546,66 +701,10 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Today's reservations */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-emerald-600" />
-                Aujourd'hui ({data.todayReservations.length})
-              </h2>
-              <Link href="/admin/reservations">
-                <Button variant="outline" size="sm">Tout voir</Button>
-              </Link>
-            </div>
-            {data.todayReservations.length === 0 ? (
-              <p className="text-center text-gray-400 py-10">Aucune réservation aujourd'hui</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Client</th>
-                      <th className="px-4 py-3 text-left">Formule</th>
-                      <th className="px-4 py-3 text-left">Créneau</th>
-                      <th className="px-4 py-3 text-left">Enfants</th>
-                      <th className="px-4 py-3 text-left">Total</th>
-                      <th className="px-4 py-3 text-left">Paiement</th>
-                      <th className="px-4 py-3 text-left">Statut</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {data.todayReservations.map(r => (
-                      <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-gray-900">{r.clientName}</p>
-                          <p className="text-gray-400 text-xs">{r.reference}</p>
-                        </td>
-                        <td className="px-4 py-3 text-gray-700 max-w-[140px] truncate">{r.formula?.name ?? (r.type === "futsal" ? `Futsal T${r.courtNumber}` : "—")}</td>
-                        <td className="px-4 py-3 text-gray-700 font-mono text-xs">{r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}:00` : "—")}</td>
-                        <td className="px-4 py-3 text-gray-700">{r.type === "futsal" ? r.playerCount : r.childrenCount}</td>
-                        <td className="px-4 py-3 font-semibold text-emerald-700">{formatPrice(r.totalPrice)}</td>
-                        <td className="px-4 py-3">
-                          {r.fullPaymentPaid
-                            ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">💶 Payé</span>
-                            : r.depositPaid
-                            ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Acompte ✓</span>
-                            : <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">En attente</span>
-                          }
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={statusColorVariant(r.status)}>
-                            {getStatusLabel(r.status)}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          {/* Today — split Futsal / Anniversaire */}
+          <TodaySection reservations={data.todayReservations} />
 
-          {/* Weekly planning */}
+          {/* Weekly birthday planning */}
           <WeeklyPlanning reservations={allWeekReservations} token={token} onReload={load} />
         </>
       )}

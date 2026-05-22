@@ -100,9 +100,15 @@ export async function POST(req: NextRequest) {
 
   // Futsal reservation
   if (body.type === "futsal") {
-    const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, date, playerCount, notes } = body;
+    const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, date, playerCount, notes, amountPaid, paymentMethod } = body;
     const settings = await prisma.settings.findMany();
     const courtPrice = parseFloat(settings.find(s => s.key === "futsal_court_price")?.value ?? "110");
+    const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : courtPrice;
+    const fullPaymentPaid = paid >= courtPrice;
+    const depositPaid = paid > 0;
+    const depositAmount = paid < courtPrice ? paid : 0;
+    const paymentLabel = paymentMethod === "cb" ? "CB" : paymentMethod === "especes" ? "Espèces" : "";
+    const adminNotes = [notes, paymentLabel ? `Paiement: ${paymentLabel}` : ""].filter(Boolean).join(" | ");
     const reservation = await prisma.reservation.create({
       data: {
         reference, type: "futsal",
@@ -111,9 +117,12 @@ export async function POST(req: NextRequest) {
         futsalTimeSlotId, courtNumber: parseInt(courtNumber),
         date: new Date(date), playerCount: parseInt(playerCount),
         totalPrice: courtPrice, basePrice: courtPrice,
-        paymentType: "admin", depositAmount: 0,
-        depositPaid: true, fullPaymentPaid: true,
-        status: "confirmed", notes,
+        paymentType: "admin", depositAmount,
+        depositPaid, fullPaymentPaid,
+        ...(depositPaid ? { depositPaidAt: new Date(), depositPaymentMethod: paymentMethod === "cb" ? "cb" : "onsite" } : {}),
+        ...(fullPaymentPaid ? { fullPaymentPaidAt: new Date() } : {}),
+        status: "confirmed",
+        notes: adminNotes || undefined,
         shareToken: crypto.randomUUID(),
       },
       include: { futsalTimeSlot: true },
@@ -199,4 +208,25 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest) {
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await req.json();
+  const reservation = await prisma.reservation.findUnique({ where: { id } });
+  if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!["cancelled", "expired"].includes(reservation.status)) {
+    return NextResponse.json(
+      { error: "Seules les réservations annulées ou expirées peuvent être supprimées" },
+      { status: 400 }
+    );
+  }
+
+  // Delete related participants first
+  await prisma.futsalParticipant.deleteMany({ where: { reservationId: id } });
+  await prisma.reservation.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
 }

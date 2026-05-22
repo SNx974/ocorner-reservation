@@ -29,9 +29,13 @@ async function seed() {
   for (const f of formulas) {
     await p.formula.upsert({ where: { id: f.id }, create: { ...f, isActive: true }, update: {} });
   }
-  // Futsal slots 10h-22h
+  // Futsal slots 10h-22h (heures pleines, minute=0)
   for (let h = 10; h <= 22; h++) {
-    await p.futsalTimeSlot.upsert({ where: { id: 'futsal_hour_'+h }, create: { id: 'futsal_hour_'+h, hour: h, isActive: true }, update: {} });
+    await p.futsalTimeSlot.upsert({
+      where: { id: 'futsal_hour_'+h },
+      create: { id: 'futsal_hour_'+h, hour: h, minute: 0, isActive: true },
+      update: { minute: 0 },
+    });
   }
   // Settings
   const settings = [
@@ -45,6 +49,7 @@ async function seed() {
     { key: 'futsal_min_players', value: '10' },
     { key: 'futsal_deposit_percentage', value: '30' },
     { key: 'futsal_deposit_min_amount', value: '30' },
+    { key: 'futsal_slot_interval', value: '60' },
   ];
   for (const s of settings) {
     await p.settings.upsert({ where: { key: s.key }, create: s, update: {} });

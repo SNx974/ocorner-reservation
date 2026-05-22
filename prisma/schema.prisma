@@ -134,6 +134,7 @@ model AdminUser {
 model FutsalTimeSlot {
   id           String        @id @default(cuid())
   hour         Int           // 10 to 22
+  minute       Int           @default(0)  // 0 or 30
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   reservations Reservation[]
