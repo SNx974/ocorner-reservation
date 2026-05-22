@@ -12,6 +12,7 @@ model Formula {
   name         String
   category     String
   includes     String
+  description  String?       // Rich description shown in popup
   pricePerChild Float
   minChildren  Int
   isActive     Boolean       @default(true)

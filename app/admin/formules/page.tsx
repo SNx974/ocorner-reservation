@@ -5,7 +5,7 @@ import { useAdmin } from "../admin-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Plus, Trash2, Pencil, Check, X, Loader2, Save, Euro, Users, Tag,
+  Plus, Trash2, Pencil, Check, X, Loader2, Save, Euro, Users, Tag, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ interface Formula {
   name: string;
   category: string;
   includes: string;
+  description?: string;
   pricePerChild: number;
   minChildren: number;
   isActive: boolean;
@@ -25,7 +26,7 @@ const CATEGORIES = [
   { value: "foot", label: "⚽ Foot" },
 ];
 
-const emptyForm = { name: "", category: "marmaille", includes: "", pricePerChild: "", minChildren: "6" };
+const emptyForm = { name: "", category: "marmaille", includes: "", description: "", pricePerChild: "", minChildren: "6" };
 
 export default function FormulesPage() {
   const { token } = useAdmin();
@@ -167,7 +168,7 @@ export default function FormulesPage() {
       {/* Add formula modal */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-gray-900">Nouvelle formule</h2>
               <button onClick={() => setShowAdd(false)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -186,9 +187,22 @@ export default function FormulesPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contenu (ex: Boisson incluse)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contenu résumé (ex: Boisson incluse)</label>
                 <Input placeholder="Boisson incluse, crêpe..." value={addForm.includes}
                   onChange={e => setAddForm(f => ({ ...f, includes: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" /> Descriptif complet (affiché dans la pop-up client)</span>
+                </label>
+                <p className="text-xs text-gray-400 mb-1.5">Ce texte sera affiché quand le client clique sur la formule. Décrivez en détail ce qui est inclus, le déroulement, etc.</p>
+                <textarea
+                  value={addForm.description}
+                  onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))}
+                  rows={5}
+                  placeholder="Ex: Votre enfant et ses amis profitent de 3h de pur bonheur dans notre parc de jeux. La formule comprend : accès illimité aux attractions, une boisson offerte par enfant, une table décorée pour le moment du gâteau..."
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -236,7 +250,19 @@ export default function FormulesPage() {
                       onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} />
                     <Input defaultValue={f.includes}
                       onChange={e => setEditData(d => ({ ...d, includes: e.target.value }))}
-                      placeholder="Contenu inclus..." />
+                      placeholder="Contenu résumé..." />
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5" /> Descriptif complet (pop-up client)
+                      </label>
+                      <textarea
+                        defaultValue={f.description ?? ""}
+                        onChange={e => setEditData(d => ({ ...d, description: e.target.value }))}
+                        rows={4}
+                        placeholder="Décrivez en détail ce qui est inclus, le déroulement de l'anniversaire..."
+                        className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 resize-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Euro className="w-4 h-4 text-gray-400" />
@@ -260,16 +286,24 @@ export default function FormulesPage() {
                   </div>
                 ) : (
                   /* View mode */
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div>
+                  <div className="flex items-start justify-between flex-wrap gap-3">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900">{f.name}</p>
                       {f.includes && <p className="text-sm text-gray-500 mt-0.5">{f.includes}</p>}
-                      <div className="flex items-center gap-3 mt-1">
+                      {f.description && (
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-2 italic">
+                          <FileText className="w-3 h-3 inline mr-1" />{f.description}
+                        </p>
+                      )}
+                      {!f.description && (
+                        <p className="text-xs text-amber-500 mt-1 italic">⚠️ Aucun descriptif — cliquez sur ✏️ pour en ajouter</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-emerald-700 font-bold text-sm">{f.pricePerChild}€ / enfant</span>
                         <span className="text-gray-400 text-xs">• min {f.minChildren} enfants</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => toggleActive(f)}
                         className={cn(
@@ -281,7 +315,10 @@ export default function FormulesPage() {
                         {f.isActive ? "Actif" : "Inactif"}
                       </button>
                       <button
-                        onClick={() => { setEditId(f.id); setEditData({ name: f.name, includes: f.includes, pricePerChild: f.pricePerChild, minChildren: f.minChildren }); }}
+                        onClick={() => {
+                          setEditId(f.id);
+                          setEditData({ name: f.name, includes: f.includes, description: f.description ?? "", pricePerChild: f.pricePerChild, minChildren: f.minChildren });
+                        }}
                         className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
                         <Pencil className="w-4 h-4" />
                       </button>

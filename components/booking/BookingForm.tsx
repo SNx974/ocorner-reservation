@@ -10,14 +10,113 @@ import { ConfirmationPage } from "./ConfirmationPage";
 import { MonthCalendar } from "./MonthCalendar";
 import {
   ChevronLeft, ChevronRight, Users, User, Mail, Phone, AlertCircle, Tag, X,
+  CheckCircle, Info,
 } from "lucide-react";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn, formatPrice, getCategoryLabel } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface Formula {
   id: string; name: string; category: string;
-  includes: string; pricePerChild: number; minChildren: number;
+  includes: string; description?: string; pricePerChild: number; minChildren: number;
+}
+
+const categoryAccent: Record<string, { bg: string; border: string; badge: string; icon: string; btn: string }> = {
+  marmaille:      { bg: "from-emerald-500 to-green-600",  border: "border-emerald-200", badge: "bg-emerald-100 text-emerald-800", icon: "🎡",    btn: "bg-emerald-600 hover:bg-emerald-700" },
+  marmaille_foot: { bg: "from-purple-500 to-violet-600",  border: "border-purple-200",  badge: "bg-purple-100 text-purple-800",  icon: "⚽🎡",  btn: "bg-purple-600 hover:bg-purple-700" },
+  foot:           { bg: "from-blue-500 to-sky-600",       border: "border-blue-200",    badge: "bg-blue-100 text-blue-800",     icon: "⚽",    btn: "bg-blue-600 hover:bg-blue-700" },
+};
+
+function FormulaDetailModal({
+  formula, isSelected, onSelect, onClose,
+}: { formula: Formula; isSelected: boolean; onSelect: (f: Formula) => void; onClose: () => void }) {
+  const style = categoryAccent[formula.category] ?? categoryAccent.marmaille;
+
+  function handleSelect() {
+    onSelect(formula);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}>
+      <div
+        className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Gradient header */}
+        <div className={cn("bg-gradient-to-br p-6 text-white relative", style.bg)}>
+          <button onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+          <div className="text-4xl mb-2">{style.icon}</div>
+          <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", style.badge)}>
+            {getCategoryLabel(formula.category)}
+          </span>
+          <h2 className="text-xl font-bold mt-2 leading-tight">{formula.name}</h2>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-3xl font-extrabold">{formatPrice(formula.pricePerChild)}</span>
+            <span className="text-white/80 text-sm">/ enfant</span>
+          </div>
+          <p className="text-white/70 text-xs mt-1 flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" /> Minimum {formula.minChildren} enfants
+          </p>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Includes summary */}
+          {formula.includes && (
+            <div className={cn("rounded-xl border p-4", style.border, "bg-gray-50")}>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">✨ Ce qui est inclus</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{formula.includes}</p>
+            </div>
+          )}
+
+          {/* Full description */}
+          {formula.description ? (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5" /> Description de la formule
+              </p>
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                {formula.description}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-400 text-sm italic">
+              Contactez-nous pour plus d'informations sur cette formule.
+            </div>
+          )}
+        </div>
+
+        {/* Footer CTA */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50">
+          {isSelected ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2 text-emerald-700 text-sm font-semibold py-2">
+                <CheckCircle className="w-5 h-5" /> Formule déjà sélectionnée
+              </div>
+              <button onClick={onClose}
+                className="w-full py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-semibold hover:bg-gray-100 transition-all text-sm">
+                Fermer
+              </button>
+            </div>
+          ) : (
+            <button onClick={handleSelect}
+              className={cn(
+                "w-full py-3.5 rounded-xl text-white font-bold text-base transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-[0.98]",
+                style.btn
+              )}>
+              Choisir cette formule
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const STEPS = ["Formule", "Planning", "Contact", "Paiement"];
@@ -53,6 +152,7 @@ export function BookingForm() {
   } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [previewFormula, setPreviewFormula] = useState<Formula | null>(null);
 
   useEffect(() => {
     fetch("/api/formulas").then(r => r.json()).then(setFormulas);
@@ -170,6 +270,19 @@ export function BookingForm() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Formula detail modal */}
+      {previewFormula && (
+        <FormulaDetailModal
+          formula={previewFormula}
+          isSelected={form.formulaId === previewFormula.id}
+          onSelect={f => {
+            set("formulaId", f.id);
+            set("childrenCount", Math.max(form.childrenCount, f.minChildren));
+          }}
+          onClose={() => setPreviewFormula(null)}
+        />
+      )}
+
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center mb-2">
@@ -226,10 +339,7 @@ export function BookingForm() {
             {filteredFormulas.map(f => (
               <FormulaCard key={f.id} formula={f}
                 selected={form.formulaId === f.id}
-                onSelect={f => {
-                  set("formulaId", f.id);
-                  set("childrenCount", Math.max(form.childrenCount, f.minChildren));
-                }} />
+                onPreview={setPreviewFormula} />
             ))}
           </div>
           {errors.formulaId && (
@@ -238,11 +348,13 @@ export function BookingForm() {
             </p>
           )}
 
-          <div className="flex justify-end pt-2">
-            <Button type="button" size="lg" onClick={goNext}>
-              Choisir une date <ChevronRight className="w-5 h-5 ml-1" />
-            </Button>
-          </div>
+          {form.formulaId && (
+            <div className="flex justify-end pt-2">
+              <Button type="button" size="lg" onClick={goNext}>
+                Choisir une date <ChevronRight className="w-5 h-5 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
