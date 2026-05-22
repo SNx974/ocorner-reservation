@@ -49,23 +49,25 @@ async function seed() {
   for (const s of settings) {
     await p.settings.upsert({ where: { key: s.key }, create: s, update: {} });
   }
-  // Default admin account (only if no AdminUser exists yet)
-  const adminCount = await p.adminUser.count();
-  if (adminCount === 0) {
-    const crypto = require('crypto');
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync('admin2024', salt, 100000, 64, 'sha512').toString('hex');
-    await p.adminUser.create({
-      data: {
-        id: 'default_admin',
-        username: 'admin',
-        passwordHash: salt + ':' + hash,
-        role: 'admin',
-        isActive: true,
-      }
-    });
-    console.log('Default admin account created: admin / admin2024');
-  }
+  // Default admin account — always upsert so redeploying resets password to admin2024
+  const crypto = require('crypto');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync('admin2024', salt, 100000, 64, 'sha512').toString('hex');
+  await p.adminUser.upsert({
+    where: { id: 'default_admin' },
+    create: {
+      id: 'default_admin',
+      username: 'admin',
+      passwordHash: salt + ':' + hash,
+      role: 'admin',
+      isActive: true,
+    },
+    update: {
+      passwordHash: salt + ':' + hash,
+      isActive: true,
+    },
+  });
+  console.log('Default admin account ready: admin / admin2024');
   console.log('Seed OK');
 }
 seed().finally(() => p.\$disconnect());

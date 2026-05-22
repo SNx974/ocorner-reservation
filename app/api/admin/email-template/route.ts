@@ -1,11 +1,12 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { EMAIL_TEMPLATE_DEFAULTS } from "@/lib/email-template-defaults";
 
 function checkAdminAuth(req: NextRequest): boolean {
-  return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
+  return checkAuth(req.headers.get("x-admin-token")).valid;
 }
 
 export async function GET(req: NextRequest) {

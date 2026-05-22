@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function auth(req: NextRequest) {

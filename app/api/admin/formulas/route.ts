@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
+import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function checkAdminAuth(req: NextRequest): boolean {
-  const token = req.headers.get("x-admin-token");
-  return token === process.env.ADMIN_SECRET;
+  return checkAuth(req.headers.get("x-admin-token")).valid;
 }
 
 // GET all formulas (including inactive)
