@@ -348,13 +348,35 @@ export function BookingForm() {
             </p>
           )}
 
-          {form.formulaId && (
-            <div className="flex justify-end pt-2">
-              <Button type="button" size="lg" onClick={goNext}>
-                Choisir une date <ChevronRight className="w-5 h-5 ml-1" />
-              </Button>
+          {/* Spacer so sticky bar doesn't overlap last card */}
+          {form.formulaId && <div className="h-24" />}
+        </div>
+      )}
+
+      {/* ── Sticky formula CTA (step 0 only) ── */}
+      {step === 0 && (
+        <div className={cn(
+          "fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out",
+          form.formulaId
+            ? "translate-y-0 opacity-100"
+            : "translate-y-full opacity-0 pointer-events-none"
+        )}>
+          <div className="bg-white border-t border-gray-200 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 leading-none mb-0.5">Formule sélectionnée</p>
+              <p className="font-bold text-gray-900 truncate text-sm">{selectedFormula?.name}</p>
+              <p className="text-xs text-emerald-600 font-semibold">
+                {selectedFormula ? formatPrice(selectedFormula.pricePerChild) + " / enfant" : ""}
+              </p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={goNext}
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl transition-all flex items-center gap-2 shadow-lg shadow-emerald-200 text-sm">
+              Choisir une date
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
