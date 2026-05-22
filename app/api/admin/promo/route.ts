@@ -5,7 +5,7 @@ import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function auth(req: NextRequest) {
-  return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
+  return checkAuth(req.headers.get("x-admin-token")).valid;
 }
 
 export async function GET(req: NextRequest) {

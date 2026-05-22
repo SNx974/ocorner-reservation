@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-function checkAuth(req: NextRequest) {
-  return req.headers.get("x-admin-token") === process.env.ADMIN_SECRET;
+function checkAdminAuth(req: NextRequest): boolean {
+  return checkAuth(req.headers.get("x-admin-token")).valid;
 }
 
 // GET — list sent emails (paginated)
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") ?? "1");
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 
 // POST — resend an email by its ID
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
