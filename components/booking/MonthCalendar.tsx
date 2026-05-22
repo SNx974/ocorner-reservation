@@ -210,27 +210,42 @@ export function MonthCalendar({
               const isFull = available === 0;
               const isSlotSelected = selectedSlotId === slot.id;
 
+              // Filter past slots on today: parse start hour from slot.time (e.g. "09:00-12:00")
+              const isToday = selectedDate === format(new Date(), "yyyy-MM-dd");
+              let isPastSlot = false;
+              if (isToday) {
+                const startHour = parseInt(slot.time.split(":")[0] ?? "0", 10);
+                const startMin = parseInt(slot.time.split(":")[1]?.split("-")[0] ?? "0", 10);
+                const now = new Date();
+                const slotStart = new Date();
+                slotStart.setHours(startHour, startMin, 0, 0);
+                isPastSlot = now >= slotStart;
+              }
+
+              const isDisabled = isFull || isPastSlot;
+
               return (
                 <button
                   key={slot.id}
                   type="button"
-                  disabled={isFull}
-                  onClick={() => onSelectSlot(slot.id)}
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && onSelectSlot(slot.id)}
                   className={cn(
                     "flex flex-col items-center py-3 px-4 rounded-xl border-2 font-medium transition-all",
-                    isFull && "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed",
-                    !isFull && !isSlotSelected && "border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50",
+                    isDisabled && "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed",
+                    !isDisabled && !isSlotSelected && "border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50",
                     isSlotSelected && "border-emerald-500 bg-emerald-600 text-white shadow-md"
                   )}
                 >
                   <span className="font-bold text-base">{slot.time}</span>
                   <span className={cn(
                     "text-xs mt-1",
+                    isPastSlot ? "text-gray-300" :
                     isFull ? "text-gray-300" :
                     isSlotSelected ? "text-emerald-100" :
                     available <= 2 ? "text-amber-500 font-semibold" : "text-gray-400"
                   )}>
-                    {isFull ? "Complet" : `${available}/${data.maxPerSlot} place${available > 1 ? "s" : ""}`}
+                    {isPastSlot ? "Passé" : isFull ? "Complet" : `${available}/${data.maxPerSlot} place${available > 1 ? "s" : ""}`}
                   </span>
                 </button>
               );

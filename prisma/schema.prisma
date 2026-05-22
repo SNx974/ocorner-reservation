@@ -121,6 +121,16 @@ model Settings {
   updatedAt DateTime @updatedAt
 }
 
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("moderateur") // "admin" | "moderateur"
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model FutsalTimeSlot {
   id           String        @id @default(cuid())
   hour         Int           // 10 to 22

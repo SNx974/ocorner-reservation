@@ -47,7 +47,8 @@ const categoryColor: Record<string, string> = {
 
 // ── Login ──────────────────────────────────────────────────────────
 function LoginForm() {
-  const { setToken } = useAdmin();
+  const { setToken, setRole, setUsername } = useAdmin();
+  const [user, setUser] = useState("");
   const [pwd, setPwd] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,14 +57,22 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    // If no username typed, use legacy password-only login
+    const body = user.trim() ? { username: user.trim(), password: pwd } : { password: pwd };
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pwd }),
+      body: JSON.stringify(body),
     });
     const json = await res.json();
-    if (res.ok) setToken(json.token);
-    else { setError(json.error); setLoading(false); }
+    if (res.ok) {
+      setToken(json.token);
+      setRole(json.role ?? "admin");
+      setUsername(json.username ?? null);
+    } else {
+      setError(json.error);
+      setLoading(false);
+    }
   }
 
   return (
@@ -72,14 +81,20 @@ function LoginForm() {
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">🎡</div>
           <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-          <p className="text-gray-500 text-sm mt-1">Marmaille Parc + Foot</p>
+          <p className="text-gray-500 text-sm mt-1">Ocorner</p>
         </div>
         <form onSubmit={login} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom d'utilisateur</label>
+            <input type="text" value={user} onChange={e => setUser(e.target.value)}
+              className="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+              placeholder="admin" autoComplete="username" />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe</label>
             <input type="password" value={pwd} onChange={e => setPwd(e.target.value)}
               className="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-              placeholder="••••••••" />
+              placeholder="••••••••" autoComplete="current-password" />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <Button type="submit" size="lg" className="w-full" disabled={loading}>
@@ -439,7 +454,8 @@ function WeeklyPlanning({ reservations, token, onReload }: { reservations: Reser
 
 // ── Dashboard principal ────────────────────────────────────────────
 export default function AdminDashboard() {
-  const { token } = useAdmin();
+  const { token, role } = useAdmin();
+  const isAdmin = role === "admin";
   const [data, setData] = useState<{
     stats: Stats;
     todayReservations: Reservation[];
@@ -497,9 +513,15 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard label="Réservations aujourd'hui" value={data.stats.todayCount}
               icon={Calendar} color="bg-emerald-500" />
-            <StatCard label="CA du jour" value={formatPrice(data.stats.todayRevenue)}
-              sub={`Semaine : ${formatPrice(data.stats.weekRevenue)}`}
-              icon={TrendingUp} color="bg-blue-500" />
+            {isAdmin ? (
+              <StatCard label="CA du jour" value={formatPrice(data.stats.todayRevenue)}
+                sub={`Semaine : ${formatPrice(data.stats.weekRevenue)}`}
+                icon={TrendingUp} color="bg-blue-500" />
+            ) : (
+              <StatCard label="Encaissé aujourd'hui" value={formatPrice(data.stats.todayRevenue)}
+                sub="Paiements reçus du jour"
+                icon={CreditCard} color="bg-blue-500" />
+            )}
             <StatCard label="En attente" value={data.stats.pendingCount + data.stats.depositPendingCount}
               sub={`${data.stats.depositPendingCount} acompte(s) manquant(s)`}
               icon={AlertTriangle} color="bg-amber-500" />
