@@ -21,7 +21,11 @@
       "Bash(git commit *)",
       "Bash(node -e ' *)",
       "Bash(sed -i 's|from \"\\\\./layout\"|from \"./admin-context\"|g' app/admin/page.tsx)",
-      "Bash(sed -i 's|from \"\\\\.\\\\./layout\"|from \"../admin-context\"|g' app/admin/formules/page.tsx app/admin/reservations/page.tsx app/admin/planning-anniversaire/page.tsx app/admin/email-template/page.tsx app/admin/planning-futsal/page.tsx app/admin/promo/page.tsx app/admin/creneaux/page.tsx app/admin/settings/page.tsx app/admin/emails/page.tsx)"
+      "Bash(sed -i 's|from \"\\\\.\\\\./layout\"|from \"../admin-context\"|g' app/admin/formules/page.tsx app/admin/reservations/page.tsx app/admin/planning-anniversaire/page.tsx app/admin/email-template/page.tsx app/admin/planning-futsal/page.tsx app/admin/promo/page.tsx app/admin/creneaux/page.tsx app/admin/settings/page.tsx app/admin/emails/page.tsx)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\" -Recurse | Where-Object {$_.FullName -match \"\\(app|components\\)\" } | Select-Object FullName)",
+      "Bash(New-Item -Path \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\" -ItemType File -Force)",
+      "Bash(Out-Null)",
+      "Bash(Get-Content \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\")"
     ]
   }
 }

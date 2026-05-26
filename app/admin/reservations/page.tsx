@@ -23,9 +23,12 @@ interface Reservation {
   type?: string;
   formula: { name: string; category: string } | null;
   timeSlot: { time: string } | null;
-  futsalTimeSlot?: { hour: number } | null;
+  futsalTimeSlot?: { hour: number; minute?: number } | null;
   courtNumber?: number | null;
   playerCount?: number | null;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
+  depositPaymentMethod?: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -223,7 +226,7 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
               )}
             </div>
             <p className="text-sm text-gray-500 mt-0.5 truncate">
-              {r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")} · {formatDate(r.date)} {r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}:00` : "")} · {r.type === "futsal" ? `${r.playerCount} joueurs` : `${r.childrenCount} enfants`}
+              {r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")} · {formatDate(r.date)} {r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}h${r.futsalTimeSlot.minute ? String(r.futsalTimeSlot.minute).padStart(2,"0") : "00"}` : "")} · {r.type === "futsal" ? `${r.playerCount} joueurs` : `${r.childrenCount} enfants`}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-2">
@@ -283,6 +286,48 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
               <div className="flex items-center gap-3">
                 <img src={r.qrCode} alt="QR" className="w-14 h-14 rounded-lg border" />
                 <p className="text-xs text-gray-400">QR Code de réservation</p>
+              </div>
+            )}
+
+            {/* Stripe info */}
+            {(r.stripeCheckoutSessionId || r.stripePaymentIntentId) && (
+              <div className="bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs space-y-1.5">
+                <p className="font-semibold text-violet-800 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" /> Informations Stripe
+                </p>
+                {r.stripeCheckoutSessionId && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-violet-600">Session Checkout</span>
+                    <a
+                      href={`https://dashboard.stripe.com/payments/${r.stripeCheckoutSessionId}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="font-mono text-violet-700 hover:text-violet-900 underline truncate max-w-[200px]">
+                      {r.stripeCheckoutSessionId.slice(0, 24)}…
+                    </a>
+                  </div>
+                )}
+                {r.stripePaymentIntentId && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-violet-600">Payment Intent</span>
+                    <a
+                      href={`https://dashboard.stripe.com/payments/${r.stripePaymentIntentId}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="font-mono text-violet-700 hover:text-violet-900 underline truncate max-w-[200px]">
+                      {r.stripePaymentIntentId.slice(0, 24)}…
+                    </a>
+                  </div>
+                )}
+                {r.depositPaymentMethod && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-violet-600">Méthode</span>
+                    <span className="font-semibold text-violet-800">
+                      {r.depositPaymentMethod === "stripe" ? "💳 Stripe en ligne"
+                        : r.depositPaymentMethod === "cb" ? "💳 CB sur place"
+                        : r.depositPaymentMethod === "onsite" ? "💵 Sur place"
+                        : r.depositPaymentMethod}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

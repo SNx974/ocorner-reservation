@@ -189,24 +189,36 @@ export default function FutsalReserverPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Erreur serveur");
+
+      if (json.checkoutUrl) {
+        // Real Stripe: redirect to hosted Checkout page
+        window.location.href = json.checkoutUrl;
+        return; // page will redirect
+      }
+
+      // Free (promo 100%) or demo mode
       setResult(json);
-      if (json.clientSecret?.startsWith("demo_secret_")) {
-        // Demo: auto-confirm after 1.5s
-        setTimeout(async () => {
-          await fetch("/api/reservations/confirm", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reference: json.reservation.reference }),
-          });
-          setConfirmed(true);
-        }, 1500);
-      } else if (!json.clientSecret) {
+      if (!json.clientSecret) {
+        // Free — already confirmed
         setConfirmed(true);
       }
+      // If demo_secret — wait for user to click simulate button
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : "Erreur inattendue");
-    } finally {
       setLoading(false);
     }
+    setLoading(false);
+  }
+
+  async function simulateDemoPayment() {
+    if (!result?.reservation) return;
+    setLoading(true);
+    await fetch("/api/reservations/confirm", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference: result.reservation.reference }),
+    });
+    setLoading(false);
+    setConfirmed(true);
   }
 
   function copyShareLink() {
@@ -521,10 +533,16 @@ export default function FutsalReserverPage() {
                 </div>
               )}
 
-              {result?.clientSecret?.startsWith("demo_secret_") && !confirmed && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
-                  <p className="text-amber-800 font-semibold text-sm mb-1">Mode démonstration</p>
-                  <p className="text-amber-700 text-xs">Simulation du paiement en cours...</p>
+              {result?.demoMode && result?.clientSecret?.startsWith("demo_secret_") && !confirmed && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                  <div className="text-center">
+                    <p className="text-amber-800 font-semibold text-sm">⚠️ Mode démonstration</p>
+                    <p className="text-amber-700 text-xs mt-0.5">Stripe non configuré — simulez le paiement</p>
+                  </div>
+                  <button type="button" onClick={simulateDemoPayment} disabled={loading}
+                    className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm transition-colors disabled:opacity-50">
+                    {loading ? "Simulation..." : "✓ Simuler le paiement réussi"}
+                  </button>
                 </div>
               )}
 

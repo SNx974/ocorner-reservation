@@ -84,8 +84,9 @@ model Reservation {
   depositPaymentMethod String?
   fullPaymentPaid Boolean     @default(false)
   fullPaymentPaidAt DateTime?
-  stripePaymentIntentId String?
-  stripeDepositIntentId String?
+  stripePaymentIntentId    String?
+  stripeDepositIntentId    String?
+  stripeCheckoutSessionId  String?
 
   status          String      @default("pending")
   expiresAt       DateTime?

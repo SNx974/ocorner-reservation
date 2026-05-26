@@ -8,7 +8,7 @@ import { sendConfirmationEmail } from "@/lib/email";
 import crypto from "crypto";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
-const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder");
+const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder") || STRIPE_KEY === "sk_test_placeholder";
 
 const schema = z.object({
   clientName: z.string().min(2),
@@ -24,13 +24,37 @@ const schema = z.object({
   discountAmount: z.number().optional(),
 });
 
-async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string) {
+// Build base URL from the request (works in all environments)
+function getBaseUrl(req: NextRequest): string {
+  const host = req.headers.get("host") ?? "localhost:3000";
+  const proto = req.headers.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+async function createCheckoutSession(
+  amount: number,
+  description: string,
+  metadata: Record<string, string>,
+  reference: string,
+  baseUrl: string,
+) {
   const { stripe, formatAmountForStripe } = await import("@/lib/stripe");
-  return stripe.paymentIntents.create({
-    amount: formatAmountForStripe(amount),
-    currency: "eur",
+  return stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: [{
+      price_data: {
+        currency: "eur",
+        product_data: { name: description },
+        unit_amount: formatAmountForStripe(amount),
+      },
+      quantity: 1,
+    }],
     metadata,
-    description,
+    success_url: `${baseUrl}/futsal/success?reference=${reference}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/futsal/reserver`,
+    locale: "fr",
+    customer_email: metadata.clientEmail,
   });
 }
 
@@ -72,7 +96,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ce terrain est déjà réservé pour ce créneau" }, { status: 409 });
     }
 
-    // Prix fixe du terrain divisé par le nombre de joueurs
     const basePrice = courtPrice;
     let appliedDiscount = 0;
     let validatedPromoId: string | undefined;
@@ -90,28 +113,44 @@ export async function POST(req: NextRequest) {
     const reference = generateReference();
     const expiresAt = calculateExpiryDate(expiryHours);
     const shareToken = crypto.randomUUID();
+    const baseUrl = getBaseUrl(req);
 
     let status = "pending";
     let stripePaymentIntentId: string | undefined;
     let stripeDepositIntentId: string | undefined;
-    let stripeClientSecret: string | undefined;
+    let stripeCheckoutSessionId: string | undefined;
+    let checkoutUrl: string | undefined;
 
-    // Si le total est 0 (promo 100%), confirmer directement sans passer par Stripe
+    // Free (100% promo): confirm immediately, no Stripe
     if (totalPrice === 0) {
       status = "confirmed";
     } else if (!IS_DEMO) {
-      if (data.paymentType === "online_full") {
-        const intent = await createStripeIntent(totalPrice, { reference, type: "futsal_full" }, `Futsal ${reference}`);
-        stripePaymentIntentId = intent.id;
-        stripeClientSecret = intent.client_secret!;
-      } else {
-        const intent = await createStripeIntent(depositAmount, { reference, type: "futsal_deposit" }, `Acompte Futsal ${reference}`);
-        stripeDepositIntentId = intent.id;
-        stripeClientSecret = intent.client_secret!;
-        status = "deposit_pending";
+      // Real Stripe: create Checkout Session
+      const slotLabel = `${slot.hour}h${slot.minute > 0 ? String(slot.minute).padStart(2, "0") : "00"}`;
+      const description = data.paymentType === "online_full"
+        ? `Terrain ${data.courtNumber} – Futsal ${slotLabel} – ${data.playerCount} joueurs`
+        : `Acompte Terrain ${data.courtNumber} – Futsal ${slotLabel}`;
+      const amountToPay = data.paymentType === "online_full" ? totalPrice : depositAmount;
+      const session = await createCheckoutSession(
+        amountToPay,
+        description,
+        {
+          reference,
+          type: data.paymentType === "online_full" ? "futsal_full" : "futsal_deposit",
+          clientEmail: data.clientEmail,
+        },
+        reference,
+        baseUrl,
+      );
+      stripeCheckoutSessionId = session.id;
+      // Also store the payment intent ID if available
+      if (typeof session.payment_intent === "string") {
+        stripePaymentIntentId = session.payment_intent;
       }
+      checkoutUrl = session.url!;
+      status = data.paymentType === "online_full" ? "pending" : "deposit_pending";
     } else {
-      stripeClientSecret = `demo_secret_${reference}`;
+      // Demo mode: simulate
       status = data.paymentType === "online_full" ? "pending" : "deposit_pending";
     }
 
@@ -133,9 +172,10 @@ export async function POST(req: NextRequest) {
         paymentType: data.paymentType,
         depositAmount,
         depositPaid: false,
-        fullPaymentPaid: false,
+        fullPaymentPaid: totalPrice === 0,
         stripePaymentIntentId,
         stripeDepositIntentId,
+        stripeCheckoutSessionId,
         status,
         expiresAt,
         notes: data.notes,
@@ -158,7 +198,7 @@ export async function POST(req: NextRequest) {
       reference,
       formulaName: `Futsal — Terrain ${data.courtNumber} — ${data.playerCount} joueurs`,
       date: reservation.date,
-      time: `${slot.hour}:00`,
+      time: `${slot.hour}h${slot.minute > 0 ? String(slot.minute).padStart(2, "0") : "00"}`,
       childrenCount: data.playerCount,
       totalPrice,
       depositAmount,
@@ -169,7 +209,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       reservation: { ...reservation, qrCode, shareToken },
-      clientSecret: stripeClientSecret,
+      // Demo mode: client secret for simulation
+      clientSecret: IS_DEMO && totalPrice > 0 ? `demo_secret_${reference}` : undefined,
+      // Real Stripe: redirect URL
+      checkoutUrl,
+      // Free
+      demoMode: IS_DEMO && totalPrice > 0,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
