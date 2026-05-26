@@ -8,7 +8,14 @@ import { sendConfirmationEmail } from "@/lib/email";
 import crypto from "crypto";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
-const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder") || STRIPE_KEY === "sk_test_placeholder";
+// Demo mode: no key, placeholder text, or the key ends with "..." (not filled in yet)
+const IS_DEMO =
+  !STRIPE_KEY ||
+  STRIPE_KEY.includes("placeholder") ||
+  STRIPE_KEY.endsWith("...") ||
+  STRIPE_KEY === "sk_live_..." ||
+  STRIPE_KEY === "sk_test_..." ||
+  (!STRIPE_KEY.startsWith("sk_live_") && !STRIPE_KEY.startsWith("sk_test_") && !STRIPE_KEY.startsWith("rk_"));
 
 const schema = z.object({
   clientName: z.string().min(2),
