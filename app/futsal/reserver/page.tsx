@@ -105,7 +105,7 @@ export default function FutsalReserverPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ reservation: Record<string, unknown>; clientSecret?: string } | null>(null);
+  const [result, setResult] = useState<{ reservation: Record<string, unknown>; clientSecret?: string; demoMode?: boolean; checkoutUrl?: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [courtPrice, setCourtPrice] = useState(110);
   const [minPlayers, setMinPlayers] = useState(10);
