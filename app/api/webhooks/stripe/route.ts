@@ -8,12 +8,13 @@ export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  let event: { type: string; data: { object: Record<string, unknown> } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let event: any;
 
   try {
     if (webhookSecret && sig) {
       const { stripe } = await import("@/lib/stripe");
-      event = stripe.webhooks.constructEvent(body, sig, webhookSecret) as typeof event;
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
     } else {
       event = JSON.parse(body);
     }
