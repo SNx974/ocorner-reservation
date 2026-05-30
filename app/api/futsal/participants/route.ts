@@ -5,7 +5,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
-const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder");
+const IS_DEMO =
+  !STRIPE_KEY ||
+  STRIPE_KEY.includes("placeholder") ||
+  STRIPE_KEY.endsWith("...") ||
+  STRIPE_KEY === "sk_live_..." ||
+  STRIPE_KEY === "sk_test_..." ||
+  (!STRIPE_KEY.startsWith("sk_live_") && !STRIPE_KEY.startsWith("sk_test_") && !STRIPE_KEY.startsWith("rk_"));
 
 const schema = z.object({
   shareToken: z.string(),
