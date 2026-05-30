@@ -151,6 +151,57 @@ function FutsalModal({
             )}
           </div>
 
+          {/* Participants / Groupe */}
+          {r.participants && r.participants.length > 0 && (
+            <div className="rounded-xl border border-gray-100 overflow-hidden">
+              <div className="bg-gray-50 px-3 py-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Groupe ({r.participants.length + 1} / {r.playerCount} joueurs)
+                </p>
+                {(() => {
+                  const amountPerPlayer = r.totalPrice / (r.playerCount || 1);
+                  const organizerShare = (r.depositPaid || r.fullPaymentPaid) ? amountPerPlayer : 0;
+                  const collected = organizerShare + r.participants.filter(p => p.isPaid).reduce((s, p) => s + p.amountDue, 0);
+                  return (
+                    <span className={cn("text-xs font-bold", collected >= r.totalPrice ? "text-green-600" : "text-amber-600")}>
+                      {formatPrice(collected)} / {formatPrice(r.totalPrice)}
+                    </span>
+                  );
+                })()}
+              </div>
+              <div className="divide-y divide-gray-50">
+                {/* Organizer row */}
+                <div className="flex items-center gap-2 px-3 py-2 text-sm">
+                  <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {r.clientName[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate text-xs">{r.clientName} <span className="text-blue-500 font-normal">Organisateur</span></p>
+                    <p className="text-xs text-gray-400">{formatPrice(r.totalPrice / (r.playerCount || 1))} — {r.depositPaid || r.fullPaymentPaid ? "payé ✓" : "en attente"}</p>
+                  </div>
+                  {(r.depositPaid || r.fullPaymentPaid)
+                    ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                    : <Clock className="w-4 h-4 text-amber-400 shrink-0" />}
+                </div>
+                {/* Participant rows */}
+                {r.participants.map(p => (
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold shrink-0">
+                      {p.name[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate text-xs">{p.name}</p>
+                      <p className="text-xs text-gray-400">{formatPrice(p.amountDue)} — {p.isPaid ? "payé ✓" : "à régler"}</p>
+                    </div>
+                    {p.isPaid
+                      ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                      : <Clock className="w-4 h-4 text-amber-400 shrink-0" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Contact */}
           <div className="space-y-2 text-sm">
             <a href={`tel:${r.clientPhone}`} className="flex items-center gap-2 text-gray-700 hover:text-blue-600">

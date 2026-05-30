@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   Users, CheckCircle, Clock, AlertCircle, Trophy,
-  CreditCard, Loader2, PartyPopper,
+  Loader2, PartyPopper,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
@@ -26,6 +26,7 @@ interface Reservation {
   id: string; reference: string; clientName: string; clientEmail: string;
   playerCount: number; totalPrice: number; date: string;
   courtNumber: number; status: string;
+  depositPaid: boolean; fullPaymentPaid: boolean; depositAmount: number;
   futsalTimeSlot: FutsalTimeSlot;
   participants: Participant[];
   shareToken: string;
@@ -129,8 +130,10 @@ export default function PartagePage({ params }: { params: { token: string } }) {
   const totalSlots = r.playerCount;
   const freeSlots = Math.max(0, totalSlots - takenSlots - 1); // -1 for organizer
   const totalParticipants = takenSlots + 1; // +1 organizer
-  const amountPerPlayer = r.totalPrice / totalSlots;
-  const totalCollected = r.participants.filter(p => p.isPaid).reduce((s, p) => s + p.amountDue, 0);
+  const amountPerPlayer = Math.round((r.totalPrice / totalSlots) * 100) / 100;
+  // Include organizer's share in collected if they paid deposit or full amount
+  const organizerShare = (r.depositPaid || r.fullPaymentPaid) ? amountPerPlayer : 0;
+  const totalCollected = organizerShare + r.participants.filter(p => p.isPaid).reduce((s, p) => s + p.amountDue, 0);
   const isFull = takenSlots >= totalSlots - 1; // -1 for organizer
 
   // ── Confirmed success ─────────────────────────────────────────────────
@@ -146,7 +149,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
             Tu es inscrit(e) sur la réservation <span className="font-mono font-bold text-blue-600">{r.reference}</span>
           </p>
           <div className="bg-blue-50 rounded-2xl p-4 mb-5">
-            <p className="text-sm text-gray-500 mb-1">Ta part</p>
+            <p className="text-sm text-gray-500 mb-1">Ta place est réservée !</p>
             <p className="text-3xl font-extrabold text-blue-700">{formatPrice(myAmount)}</p>
             <p className="text-xs text-gray-400 mt-1">À régler sur place le jour J</p>
           </div>
@@ -217,23 +220,6 @@ export default function PartagePage({ params }: { params: { token: string } }) {
             </div>
           </div>
 
-          {/* Finance summary */}
-          <div className="mt-4 bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Total du terrain</span>
-              <span className="font-bold text-gray-900">{formatPrice(r.totalPrice)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Part par joueur <span className="text-gray-400">({totalSlots} joueurs)</span></span>
-              <span className="font-semibold text-blue-700">{formatPrice(amountPerPlayer)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-gray-500">Collecté</span>
-              <span className={cn("font-bold", totalCollected >= r.totalPrice ? "text-green-600" : "text-amber-600")}>
-                {formatPrice(totalCollected)} / {formatPrice(r.totalPrice)}
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Participants list */}
@@ -304,12 +290,9 @@ export default function PartagePage({ params }: { params: { token: string } }) {
           </div>
         ) : (
           <div className="bg-white rounded-2xl p-5 shadow-xl">
-            <h3 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-600" /> Rejoindre le groupe
+            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-blue-600" /> Payer ma place
             </h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Ta part : <strong className="text-blue-700">{formatPrice(amountPerPlayer)}</strong> — à régler sur place le jour J
-            </p>
 
             <div className="space-y-3">
               <div>
@@ -323,7 +306,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Email <span className="text-gray-400">(optionnel — pour recevoir une confirmation)</span>
+                  Email <span className="text-gray-400">(optionnel)</span>
                 </label>
                 <Input
                   type="email"
@@ -340,21 +323,18 @@ export default function PartagePage({ params }: { params: { token: string } }) {
                 </p>
               )}
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                💡 Ta part de <strong>{formatPrice(amountPerPlayer)}</strong> sera à régler directement sur place auprès de l&apos;organisateur ou à la caisse.
-              </div>
-
               <Button
                 size="lg"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-base font-bold"
                 onClick={joinAndConfirm}
                 disabled={joining || joinName.trim().length < 2}
               >
                 {joining
                   ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Inscription en cours...</>
-                  : <><CreditCard className="w-4 h-4 mr-2" />Je rejoins le groupe</>
+                  : <>Payer — {formatPrice(amountPerPlayer)}</>
                 }
               </Button>
+              <p className="text-xs text-center text-gray-400">À régler sur place le jour J</p>
             </div>
           </div>
         )}
