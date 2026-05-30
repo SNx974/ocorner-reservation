@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Users, Calendar, CreditCard, ArrowRight, Trophy } from "lucide-react";
 
 export default function FutsalPage() {
@@ -9,19 +10,14 @@ export default function FutsalPage() {
         <Link href="/" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm">
           ← Accueil
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">⚽</span>
-          <span className="text-white font-bold text-lg">Foot à 5</span>
-        </div>
+        <Image src="/logo-foot.png" alt="Foot à 5" width={160} height={55} style={{ objectFit: "contain" }} />
       </header>
 
       {/* Hero */}
-      <div className="px-6 pt-8 pb-12 text-center max-w-2xl mx-auto">
-        <div className="text-7xl mb-4">⚽</div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 leading-tight">
-          Réservez votre terrain
-          <span className="block" style={{ color: "#1bbfa8" }}>Foot à 5</span>
-        </h1>
+      <div className="px-6 pt-4 pb-12 text-center max-w-2xl mx-auto">
+        <div className="flex justify-center mb-6">
+          <Image src="/logo-foot.png" alt="Foot à 5" width={420} height={140} style={{ objectFit: "contain", maxWidth: "100%" }} />
+        </div>
         <p className="text-white/60 text-lg">
           3 terrains disponibles · 10h à 22h · À partir de 10 joueurs
         </p>
