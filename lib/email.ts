@@ -118,17 +118,24 @@ function baseLayout(content: string, title: string, phone: string) {
     @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600&display=swap');
   </style>
 </head>
-<body style="margin:0;padding:0;background:${BRAND.bodyBg};font-family:'Barlow','Segoe UI',Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#e2e8f0;font-family:'Barlow','Segoe UI',Arial,sans-serif;">
   <div style="max-width:620px;margin:32px auto;padding:0 16px;">
-    ${content}
-    <div style="text-align:center;margin-top:24px;padding:16px;background:${BRAND.dark};border-radius:12px;">
-      <p style="margin:0;color:${BRAND.teal};font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
-        OCORNER — Réservation en ligne · La Réunion
+
+    <!-- Carte principale avec bordure visible -->
+    <div style="background:#ffffff;border-radius:20px;overflow:hidden;border:2px solid #0d1117;box-shadow:0 8px 40px rgba(0,0,0,0.18);">
+      ${content}
+    </div>
+
+    <!-- Footer brand -->
+    <div style="text-align:center;margin-top:16px;padding:18px 16px;background:${BRAND.dark};border-radius:12px;border:1px solid #1bbfa830;">
+      <p style="margin:0;color:${BRAND.teal};font-size:12px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;">
+        OCORNER — RÉSERVATION EN LIGNE · LA RÉUNION
       </p>
-      <a href="tel:${phone.replace(/\s/g, '')}" style="color:${BRAND.lime};font-size:15px;font-weight:700;text-decoration:none;display:inline-block;margin-top:6px;">
+      <a href="tel:${phone.replace(/\s/g, '')}" style="color:${BRAND.lime};font-size:16px;font-weight:700;text-decoration:none;display:inline-block;margin-top:8px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;">
         📞 ${phone}
       </a>
     </div>
+
   </div>
 </body>
 </html>`;
@@ -136,8 +143,8 @@ function baseLayout(content: string, title: string, phone: string) {
 
 function row(label: string, value: string, highlight = false) {
   return `<tr>
-    <td style="padding:8px 12px;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${label}</td>
-    <td style="padding:8px 12px;font-size:14px;font-weight:${highlight ? '700' : '500'};color:${highlight ? BRAND.teal : '#1e293b'};border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${value}</td>
+    <td style="padding:10px 16px;color:#64748b;font-size:14px;border-bottom:1px solid #e2e8f0;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${label}</td>
+    <td style="padding:10px 16px;font-size:14px;font-weight:${highlight ? '700' : '600'};color:${highlight ? BRAND.teal : '#0d1117'};border-bottom:1px solid #e2e8f0;text-align:right;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${value}</td>
   </tr>`;
 }
 
@@ -195,7 +202,7 @@ export function buildBirthdayEmailHtml(
 
   const baseUrl = getPublicUrl();
   const html = `
-<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+<div>
   <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName} Anniversaire"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
@@ -206,7 +213,7 @@ export function buildBirthdayEmailHtml(
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
-    <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
+    <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:2px solid #0d1117;">
       <div style="background:#0d1117;padding:12px 16px;">
         <p style="margin:0;color:#c8f135;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;">📋 Détails de la réservation</p>
       </div>
@@ -251,7 +258,7 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
 
   const baseUrl = getPublicUrl();
   const html = `
-<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+<div>
   <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-foot.png" alt="${parkName} Foot à 5"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
@@ -262,7 +269,7 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
-    <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
+    <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:2px solid #0d1117;">
       <div style="background:#0d1117;padding:12px 16px;">
         <p style="margin:0;color:#1bbfa8;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;">⚽ Détails</p>
       </div>
@@ -400,7 +407,7 @@ export async function sendTestEmail(toEmail: string) {
 
   const baseUrl = getPublicUrl();
   const html = baseLayout(`
-<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+<div>
   <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName}"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
