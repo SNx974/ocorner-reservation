@@ -12,7 +12,7 @@ export default function HomePage() {
             Ocorner Réservation
           </h1>
           <p className="mt-2 text-white/85 text-lg">
-            Anniversaires & Futsal — Réservez en ligne !
+            Anniversaires & Foot à 5 — Réservez en ligne !
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-4 text-sm">
             {["🎡 Parc de jeux", "⚽ Foot à 5", "🥞 Crêpes & Déjeuner", "👶 Dès 6 enfants"].map(t => (

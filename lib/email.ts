@@ -91,6 +91,11 @@ export interface ReservationEmailData {
   isBirthday?: boolean;
 }
 
+// ─── Base URL for public assets ──────────────────────────────────────
+function getPublicUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://ocorner.re";
+}
+
 // ─── HTML helpers ────────────────────────────────────────────────────
 function baseLayout(content: string, title: string, phone: string) {
   return `<!DOCTYPE html>
@@ -171,12 +176,15 @@ export function buildBirthdayEmailHtml(
       </div>`
     : "";
 
+  const baseUrl = getPublicUrl();
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);padding:36px 32px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:8px;">${parkEmoji}</div>
-    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;letter-spacing:-0.5px;">${parkName} Réservation</h1>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">${subtitle}</p>
+  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);text-align:center;line-height:0;">
+    <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName} Anniversaire"
+      style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
+  </div>
+  <div style="padding:8px 32px 0;text-align:center;">
+    <p style="margin:0;color:#475569;font-size:14px;">${subtitle}</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
@@ -224,12 +232,15 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
   const intro = tpl.email_futsal_intro ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_intro;
   const tip = tpl.email_futsal_tip ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_tip;
 
+  const baseUrl = getPublicUrl();
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);padding:36px 32px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:8px;">⚽🏟️</div>
-    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">${parkName} Futsal</h1>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">${subtitle}</p>
+  <div style="background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);text-align:center;line-height:0;">
+    <img src="${baseUrl}/logo-foot.png" alt="${parkName} Foot à 5"
+      style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
+  </div>
+  <div style="padding:8px 32px 0;text-align:center;">
+    <p style="margin:0;color:#475569;font-size:14px;">${subtitle}</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
@@ -258,10 +269,10 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
     </div>` : ""}
   </div>
   <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
-    <p style="margin:0;font-size:12px;color:#94a3b8;">Réf. <strong>${data.reference}</strong> · ${parkName} Futsal, La Réunion</p>
+    <p style="margin:0;font-size:12px;color:#94a3b8;">Réf. <strong>${data.reference}</strong> · ${parkName} Foot à 5, La Réunion</p>
   </div>
 </div>`;
-  return baseLayout(html, `Futsal ${data.reference} — ${parkName}`, phone);
+  return baseLayout(html, `Foot à 5 ${data.reference} — ${parkName}`, phone);
 }
 
 // ─── Send + save ──────────────────────────────────────────────────────
@@ -294,12 +305,12 @@ async function sendAndSave(opts: {
 
 export async function sendConfirmationEmail(data: ReservationEmailData) {
   const tpl = await getTemplateSettings();
-  const isBirthday = data.isBirthday !== false && !data.formulaName.toLowerCase().includes("futsal");
+  const isBirthday = data.isBirthday !== false && !data.formulaName.toLowerCase().includes("futsal") && !data.formulaName.toLowerCase().includes("foot");
   const html = isBirthday ? buildBirthdayEmailHtml(data, tpl) : buildFutsalEmailHtml(data, tpl);
   const parkName = tpl.email_park_name ?? "Ocorner";
   const subject = isBirthday
     ? `🎉 Réservation ${data.reference} — Anniversaire ${parkName}`
-    : `⚽ Réservation ${data.reference} — Futsal ${parkName}`;
+    : `⚽ Réservation ${data.reference} — Foot à 5 ${parkName}`;
 
   return sendAndSave({ to: data.clientEmail, subject, html, type: "confirmation", reference: data.reference, reservationId: data.reservationId });
 }

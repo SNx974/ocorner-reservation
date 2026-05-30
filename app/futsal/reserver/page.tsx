@@ -269,7 +269,7 @@ export default function FutsalReserverPage() {
 
             <div className="flex gap-3">
               <Link href="/futsal" className="flex-1">
-                <Button variant="outline" className="w-full">Retour Futsal</Button>
+                <Button variant="outline" className="w-full">Retour Foot à 5</Button>
               </Link>
               <Link href={`/partage/${r.shareToken}`} className="flex-1">
                 <Button className="w-full bg-blue-600 hover:bg-blue-700">Voir mon groupe</Button>

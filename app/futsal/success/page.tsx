@@ -78,7 +78,7 @@ function SuccessContent() {
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
           <p className="font-semibold text-gray-900">{error ?? "Réservation introuvable"}</p>
           <Link href="/futsal" className="mt-4 inline-block">
-            <Button variant="outline">Retour Futsal</Button>
+            <Button variant="outline">Retour Foot à 5</Button>
           </Link>
         </div>
       </div>
@@ -175,7 +175,7 @@ function SuccessContent() {
 
           <div className="flex gap-3">
             <Link href="/futsal" className="flex-1">
-              <Button variant="outline" className="w-full">Retour Futsal</Button>
+              <Button variant="outline" className="w-full">Retour Foot à 5</Button>
             </Link>
             <Link href={`/partage/${reservation.shareToken}`} className="flex-1">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">Voir mon groupe</Button>

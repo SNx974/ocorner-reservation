@@ -11,7 +11,7 @@ export default function FutsalPage() {
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-3xl">⚽</span>
-          <span className="text-white font-bold text-lg">Futsal</span>
+          <span className="text-white font-bold text-lg">Foot à 5</span>
         </div>
       </header>
 
@@ -20,7 +20,7 @@ export default function FutsalPage() {
         <div className="text-7xl mb-4">⚽</div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 leading-tight">
           Réservez votre terrain
-          <span className="block text-blue-300">Futsal</span>
+          <span className="block text-blue-300">Foot à 5</span>
         </h1>
         <p className="text-blue-200 text-lg">
           3 terrains disponibles · 10h à 22h · À partir de 10 joueurs
