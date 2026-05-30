@@ -33,9 +33,18 @@
 }
 
 @layer utilities {
-  .gradient-hero {
-    background: #0d1117;
+  /* ── Ocorner Brand ── */
+  :root {
+    --brand-bg:   #0a1628;   /* Bleu nuit profond */
+    --brand-teal: #1bbfa8;   /* Teal principal */
+    --brand-lime: #c8f135;   /* Lime/jaune-vert */
   }
+  .gradient-hero {
+    background: var(--brand-bg);
+  }
+  .brand-bg   { background: var(--brand-bg); }
+  .brand-teal { color: var(--brand-teal); }
+  .brand-lime { color: var(--brand-lime); }
   .card-hover {
     @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
   }

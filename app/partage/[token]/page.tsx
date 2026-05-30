@@ -104,7 +104,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
   // ── Loading ───────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <Loader2 className="w-10 h-10 text-white animate-spin" />
       </div>
     );
@@ -113,7 +113,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
   // ── Error ─────────────────────────────────────────────────────────────
   if (error || !reservation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-gray-900">Lien invalide</h2>
@@ -136,7 +136,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
   // ── Confirmed success ─────────────────────────────────────────────────
   if (confirmed) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-4">
         <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-sm w-full text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <PartyPopper className="w-10 h-10 text-green-600" />
@@ -181,7 +181,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
 
   // ── Main page ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 px-4 py-8">
+    <div className="min-h-screen bg-[#0a1628] px-4 py-8">
       <div className="max-w-lg mx-auto space-y-4">
 
         {/* Header */}

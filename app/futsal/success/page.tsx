@@ -60,7 +60,7 @@ function SuccessContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <div className="bg-white rounded-2xl p-10 text-center max-w-sm w-full mx-4">
           <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="font-semibold text-gray-900">Confirmation du paiement…</p>
@@ -73,7 +73,7 @@ function SuccessContent() {
 
   if (error || !reservation) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <div className="bg-white rounded-2xl p-10 text-center max-w-sm w-full mx-4">
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
           <p className="font-semibold text-gray-900">{error ?? "Réservation introuvable"}</p>
@@ -97,7 +97,7 @@ function SuccessContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 px-4 py-10">
+    <div className="min-h-screen bg-[#0a1628] px-4 py-10">
       <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-3xl p-8 shadow-2xl">
           {/* Success header */}
@@ -190,7 +190,7 @@ function SuccessContent() {
 export default function FutsalSuccessPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-white" />
       </div>
     }>

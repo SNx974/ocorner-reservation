@@ -6,7 +6,7 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f1f5f9]">
       {/* Hero */}
-      <div className="bg-[#0d1117] text-white py-8 px-4">
+      <div className="bg-[#0a1628] text-white py-8 px-4">
         <div className="max-w-2xl mx-auto text-center">
           {/* Logo anniversaire */}
           <div className="flex justify-center mb-5">
@@ -40,7 +40,7 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#0d1117] py-6 text-center text-sm">
+      <footer className="bg-[#0a1628] py-6 text-center text-sm">
         <p className="font-bold tracking-widest uppercase" style={{ color: "#1bbfa8" }}>Ocorner — La Réunion</p>
         <p className="mt-1" style={{ color: "#c8f135" }}>📞 Contact : 0692 XX XX XX</p>
       </footer>

@@ -4,7 +4,7 @@ import { Users, Calendar, CreditCard, ArrowRight, Trophy } from "lucide-react";
 
 export default function FutsalPage() {
   return (
-    <div className="min-h-screen bg-[#0d1117]">
+    <div className="min-h-screen bg-[#0a1628]">
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto">
         <Link href="/" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm">

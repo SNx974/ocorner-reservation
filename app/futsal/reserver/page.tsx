@@ -234,7 +234,7 @@ export default function FutsalReserverPage() {
     const r = result.reservation;
     const shareLink = `${typeof window !== "undefined" ? window.location.origin : ""}/partage/${r.shareToken}`;
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 px-4 py-10">
+      <div className="min-h-screen bg-[#0a1628] px-4 py-10">
         <div className="max-w-lg mx-auto">
           <div className="bg-white rounded-3xl p-8 shadow-2xl text-center">
             <div className="text-6xl mb-4">⚽🎉</div>
@@ -282,7 +282,7 @@ export default function FutsalReserverPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 px-4 py-8">
+    <div className="min-h-screen bg-[#0a1628] px-4 py-8">
       <div className="max-w-xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
