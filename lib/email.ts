@@ -93,9 +93,7 @@ export interface ReservationEmailData {
 
 // ─── Base URL for public assets ──────────────────────────────────────
 function getPublicUrl() {
-  const url = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://ocorner.re";
-  // Force https for email image compatibility
-  return url.replace(/^http:\/\//, "https://");
+  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://ocorner.re";
 }
 
 // ─── HTML helpers ────────────────────────────────────────────────────
