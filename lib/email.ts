@@ -97,6 +97,16 @@ function getPublicUrl() {
 }
 
 // ─── HTML helpers ────────────────────────────────────────────────────
+// ─── Brand colors ────────────────────────────────────────────────────
+const BRAND = {
+  dark:    "#0d1117",   // fond noir/navy du site
+  teal:    "#1bbfa8",   // couleur principale teal
+  lime:    "#c8f135",   // jaune-vert accent (ANNIVERSAIRE)
+  white:   "#ffffff",
+  gray:    "#94a3b8",
+  bodyBg:  "#f1f5f9",
+};
+
 function baseLayout(content: string, title: string, phone: string) {
   return `<!DOCTYPE html>
 <html lang="fr">
@@ -104,14 +114,21 @@ function baseLayout(content: string, title: string, phone: string) {
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${title}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600&display=swap');
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif;">
+<body style="margin:0;padding:0;background:${BRAND.bodyBg};font-family:'Barlow','Segoe UI',Arial,sans-serif;">
   <div style="max-width:620px;margin:32px auto;padding:0 16px;">
     ${content}
-    <p style="text-align:center;color:#94a3b8;font-size:12px;margin-top:24px;">
-      Ocorner — Réservation en ligne · La Réunion<br/>
-      <a href="tel:${phone.replace(/\s/g, '')}" style="color:#10b981;">${phone}</a>
-    </p>
+    <div style="text-align:center;margin-top:24px;padding:16px;background:${BRAND.dark};border-radius:12px;">
+      <p style="margin:0;color:${BRAND.teal};font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+        OCORNER — Réservation en ligne · La Réunion
+      </p>
+      <a href="tel:${phone.replace(/\s/g, '')}" style="color:${BRAND.lime};font-size:15px;font-weight:700;text-decoration:none;display:inline-block;margin-top:6px;">
+        📞 ${phone}
+      </a>
+    </div>
   </div>
 </body>
 </html>`;
@@ -119,8 +136,8 @@ function baseLayout(content: string, title: string, phone: string) {
 
 function row(label: string, value: string, highlight = false) {
   return `<tr>
-    <td style="padding:8px 12px;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;">${label}</td>
-    <td style="padding:8px 12px;font-size:14px;font-weight:${highlight ? 'bold' : '500'};color:${highlight ? '#10b981' : '#1e293b'};border-bottom:1px solid #f1f5f9;text-align:right;">${value}</td>
+    <td style="padding:8px 12px;color:#64748b;font-size:14px;border-bottom:1px solid #f1f5f9;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${label}</td>
+    <td style="padding:8px 12px;font-size:14px;font-weight:${highlight ? '700' : '500'};color:${highlight ? BRAND.teal : '#1e293b'};border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Barlow','Segoe UI',Arial,sans-serif;">${value}</td>
   </tr>`;
 }
 
@@ -179,19 +196,19 @@ export function buildBirthdayEmailHtml(
   const baseUrl = getPublicUrl();
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);text-align:center;line-height:0;">
+  <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName} Anniversaire"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
   </div>
-  <div style="padding:8px 32px 0;text-align:center;">
-    <p style="margin:0;color:#475569;font-size:14px;">${subtitle}</p>
+  <div style="background:#0d1117;padding:8px 32px 16px;text-align:center;">
+    <p style="margin:0;color:#c8f135;font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${subtitle}</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
     <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
-      <div style="background:#1e293b;padding:12px 16px;">
-        <p style="margin:0;color:white;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">📋 Détails de la réservation</p>
+      <div style="background:#0d1117;padding:12px 16px;">
+        <p style="margin:0;color:#c8f135;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;">📋 Détails de la réservation</p>
       </div>
       <table style="width:100%;border-collapse:collapse;">
         ${row("Référence", data.reference)}
@@ -235,19 +252,19 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
   const baseUrl = getPublicUrl();
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);text-align:center;line-height:0;">
+  <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-foot.png" alt="${parkName} Foot à 5"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
   </div>
-  <div style="padding:8px 32px 0;text-align:center;">
-    <p style="margin:0;color:#475569;font-size:14px;">${subtitle}</p>
+  <div style="background:#0d1117;padding:8px 32px 16px;text-align:center;">
+    <p style="margin:0;color:#1bbfa8;font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${subtitle}</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
     <p style="font-size:14px;color:#475569;line-height:1.6;">${intro}</p>
     <div style="background:#f8fafc;border-radius:12px;overflow:hidden;margin:20px 0;border:1px solid #e2e8f0;">
-      <div style="background:#1e293b;padding:12px 16px;">
-        <p style="margin:0;color:white;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">⚽ Détails</p>
+      <div style="background:#0d1117;padding:12px 16px;">
+        <p style="margin:0;color:#1bbfa8;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;">⚽ Détails</p>
       </div>
       <table style="width:100%;border-collapse:collapse;">
         ${row("Référence", data.reference)}
@@ -384,12 +401,12 @@ export async function sendTestEmail(toEmail: string) {
   const baseUrl = getPublicUrl();
   const html = baseLayout(`
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);text-align:center;line-height:0;">
+  <div style="background:#0d1117;text-align:center;line-height:0;">
     <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName}"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
   </div>
-  <div style="padding:8px 32px 0;text-align:center;">
-    <p style="margin:0;color:#475569;font-size:14px;">Mail de test — Configuration Brevo</p>
+  <div style="background:#0d1117;padding:8px 32px 16px;text-align:center;">
+    <p style="margin:0;color:#c8f135;font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Mail de test — Configuration Brevo</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">✅ <strong>Félicitations !</strong></p>
