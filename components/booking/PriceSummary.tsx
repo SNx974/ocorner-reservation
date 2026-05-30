@@ -25,28 +25,28 @@ export function PriceSummary({
   const isOnsite = paymentType.startsWith("onsite");
 
   return (
-    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-200">
-      <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <CreditCard className="w-5 h-5 text-emerald-600" />
+    <div className="bg-white/10 rounded-2xl p-5 border border-white/20">
+      <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+        <CreditCard className="w-5 h-5 text-[#1bbfa8]" />
         Récapitulatif
       </h3>
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600">Formule</span>
-          <span className="font-medium text-right max-w-[60%] text-gray-900">{formulaName}</span>
+          <span className="text-white/60">Formule</span>
+          <span className="font-medium text-right max-w-[60%] text-white">{formulaName}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600 flex items-center gap-1">
+          <span className="text-white/60 flex items-center gap-1">
             <Users className="w-3.5 h-3.5" /> Enfants
           </span>
           <span className="font-medium">{childrenCount} × {formatPrice(pricePerChild)}</span>
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
+        <div className="border-t border-white/20 pt-3">
           <div className="flex justify-between text-base font-bold">
-            <span>Total</span>
-            <span className="text-emerald-600 text-xl">{formatPrice(total)}</span>
+            <span className="text-white">Total</span>
+            <span className="text-[#c8f135] text-xl">{formatPrice(total)}</span>
           </div>
         </div>
 

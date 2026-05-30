@@ -89,48 +89,48 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
       </div>
 
       {/* Main details card */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+      <div className="bg-white/10 rounded-2xl border border-white/10 shadow-sm overflow-hidden mb-4">
         {/* Booking info */}
         <div className="p-5 space-y-4">
-          <h2 className="font-bold text-gray-900 text-lg">Votre réservation</h2>
+          <h2 className="font-bold text-white text-lg">Votre réservation</h2>
 
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-xl">
-              <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                <Star className="w-4 h-4 text-emerald-600" />
+            <div className="flex items-start gap-3 p-3 bg-[#1bbfa8]/10 rounded-xl">
+              <div className="w-9 h-9 rounded-lg bg-[#1bbfa8]/20 flex items-center justify-center shrink-0">
+                <Star className="w-4 h-4 text-[#1bbfa8]" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">Formule</p>
-                <p className="font-semibold text-gray-900">{formula?.name as string}</p>
+                <p className="text-xs text-white/50">Formule</p>
+                <p className="font-semibold text-white">{formula?.name as string}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                <Calendar className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <Calendar className="w-4 h-4 text-white/40 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-500">Date</p>
-                  <p className="font-semibold text-gray-900 capitalize text-sm">{formattedDate}</p>
+                  <p className="text-xs text-white/50">Date</p>
+                  <p className="font-semibold text-white capitalize text-sm">{formattedDate}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                <Clock className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <Clock className="w-4 h-4 text-white/40 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-500">Heure</p>
-                  <p className="font-semibold text-gray-900">{timeSlot?.time as string}</p>
+                  <p className="text-xs text-white/50">Heure</p>
+                  <p className="font-semibold text-white">{timeSlot?.time as string}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                <Users className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <Users className="w-4 h-4 text-white/40 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-xs text-gray-500">Enfants</p>
-                  <p className="font-semibold text-gray-900">{r.childrenCount as number} enfants</p>
+                  <p className="text-xs text-white/50">Enfants</p>
+                  <p className="font-semibold text-white">{r.childrenCount as number} enfants</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                <div className="w-4 h-4 text-gray-400 mt-0.5 shrink-0 text-lg leading-none">€</div>
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
+                <div className="w-4 h-4 text-white/40 mt-0.5 shrink-0 text-lg leading-none">€</div>
                 <div>
-                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-xs text-white/50">Total</p>
                   <p className="font-bold text-emerald-600">{formatPrice(r.totalPrice as number)}</p>
                 </div>
               </div>
@@ -196,9 +196,9 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
 
         {/* QR Code */}
         {r.qrCode ? (
-          <div className="border-t border-gray-100 p-5 text-center bg-gray-50">
-            <p className="text-sm font-semibold text-gray-700 mb-1">Votre QR Code d'entrée</p>
-            <p className="text-xs text-gray-400 mb-3">Présentez-le à l'accueil le jour J</p>
+          <div className="border-t border-white/10 p-5 text-center bg-white/5">
+            <p className="text-sm font-semibold text-white mb-1">Votre QR Code d'entrée</p>
+            <p className="text-xs text-white/50 mb-3">Présentez-le à l'accueil le jour J</p>
             <img
               src={r.qrCode as string}
               alt="QR Code réservation"
@@ -209,11 +209,11 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
       </div>
 
       {/* Email notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 flex items-center gap-3">
+      <div className="bg-[#1bbfa8]/10 border border-[#1bbfa8]/30 rounded-2xl p-4 mb-5 flex items-center gap-3">
         <span className="text-2xl">📧</span>
         <div>
-          <p className="font-semibold text-blue-900 text-sm">Email de confirmation envoyé</p>
-          <p className="text-blue-700 text-xs mt-0.5">
+          <p className="font-semibold text-white text-sm">Email de confirmation envoyé</p>
+          <p className="text-white/60 text-xs mt-0.5">
             Vérifiez votre boîte <strong>{r.clientEmail as string}</strong>
           </p>
         </div>
@@ -221,21 +221,21 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
 
       {/* Info / next steps */}
       {isConfirmed && (
-        <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-2xl p-5 mb-5">
-          <h3 className="font-bold text-emerald-900 mb-3 flex items-center gap-2">
-            <PartyPopper className="w-5 h-5" /> Préparez votre visite
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-5">
+          <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+            <PartyPopper className="w-5 h-5 text-[#c8f135]" /> Préparez votre visite
           </h3>
-          <ul className="space-y-2 text-sm text-emerald-800">
-            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />Venez 10 min avant votre créneau</li>
-            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />Présentez ce QR code ou votre référence à l'accueil</li>
-            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />Chaussures de sport recommandées pour le foot</li>
-            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />Questions ? Appelez le <strong>0692 XX XX XX</strong></li>
+          <ul className="space-y-2 text-sm text-white/80">
+            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1bbfa8]" />Venez 10 min avant votre créneau</li>
+            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1bbfa8]" />Présentez ce QR code ou votre référence à l'accueil</li>
+            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1bbfa8]" />Chaussures de sport recommandées pour le foot</li>
+            <li className="flex items-start gap-2"><CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1bbfa8]" />Questions ? Appelez le <strong>0692 XX XX XX</strong></li>
           </ul>
         </div>
       )}
 
       <Link href="/">
-        <Button variant="outline" size="lg" className="w-full">
+        <Button variant="outline" size="lg" className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white">
           <Home className="w-5 h-5 mr-2" /> Retour à l'accueil
         </Button>
       </Link>

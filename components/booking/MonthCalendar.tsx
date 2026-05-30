@@ -82,35 +82,35 @@ export function MonthCalendar({
           type="button"
           onClick={() => setCurrentMonth(m => subMonths(m, 1))}
           disabled={isBefore(endOfMonth(subMonths(currentMonth, 1)), today)}
-          className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-xl border border-white/20 text-white hover:border-[#1bbfa8] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <h3 className="font-bold text-gray-900 capitalize text-base">
+        <h3 className="font-bold text-white capitalize text-base">
           {format(currentMonth, "MMMM yyyy", { locale: fr })}
         </h3>
         <button
           type="button"
           onClick={() => setCurrentMonth(m => addMonths(m, 1))}
-          className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+          className="w-9 h-9 flex items-center justify-center rounded-xl border border-white/20 text-white hover:border-[#1bbfa8] hover:bg-white/10 transition-all"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500 inline-block" />Disponible</span>
+      <div className="flex items-center gap-3 text-xs text-white/60 flex-wrap">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-[#1bbfa8] inline-block" />Disponible</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-400 inline-block" />Presque complet</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-200 inline-block" />Complet</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white/20 inline-block" />Complet</span>
       </div>
 
       {/* Calendar grid */}
-      <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
+      <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/5">
         {/* Day headers */}
-        <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+        <div className="grid grid-cols-7 bg-white/10 border-b border-white/10">
           {DAY_LABELS.map(d => (
-            <div key={d} className="text-center text-xs font-semibold text-gray-500 py-2">{d}</div>
+            <div key={d} className="text-center text-xs font-semibold text-white/60 py-2">{d}</div>
           ))}
         </div>
 
@@ -125,7 +125,7 @@ export function MonthCalendar({
           <div className="grid grid-cols-7">
             {/* Padding for first week */}
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`pad-${i}`} className="h-14 border-r border-b border-gray-100 last:border-r-0" />
+              <div key={`pad-${i}`} className="h-14 border-r border-b border-white/10 last:border-r-0" />
             ))}
 
             {days.map((day, idx) => {
@@ -151,18 +151,18 @@ export function MonthCalendar({
                     onSelectSlot(""); // reset slot on date change
                   }}
                   className={cn(
-                    "relative h-14 flex flex-col items-center justify-center border-b border-gray-100 transition-all",
+                    "relative h-14 flex flex-col items-center justify-center border-b border-white/10 transition-all",
                     !isColEnd && "border-r",
-                    isPast && "opacity-30 cursor-not-allowed bg-gray-50",
-                    !isPast && colorType === "unavailable" && "bg-gray-50 cursor-not-allowed",
-                    !isPast && colorType !== "unavailable" && "hover:bg-emerald-50 cursor-pointer",
+                    isPast && "opacity-30 cursor-not-allowed bg-white/5",
+                    !isPast && colorType === "unavailable" && "bg-white/5 cursor-not-allowed",
+                    !isPast && colorType !== "unavailable" && "hover:bg-white/10 cursor-pointer",
                     isSelected && "bg-emerald-600 hover:bg-emerald-600 ring-2 ring-inset ring-emerald-400",
                     isToday(day) && !isSelected && "ring-2 ring-inset ring-blue-300"
                   )}
                 >
                   <span className={cn(
                     "text-sm font-semibold",
-                    isSelected ? "text-white" : isPast ? "text-gray-400" : "text-gray-900"
+                    isSelected ? "text-white" : isPast ? "text-white/30" : "text-white"
                   )}>
                     {format(day, "d")}
                   </span>
@@ -171,7 +171,7 @@ export function MonthCalendar({
                   {!isPast && dayData && (
                     <div className="flex gap-0.5 mt-0.5">
                       {colorType === "unavailable" ? (
-                        <span className="text-[9px] text-gray-400">complet</span>
+                        <span className="text-[9px] text-white/40">complet</span>
                       ) : (
                         <>
                           <span className={cn(
@@ -197,9 +197,9 @@ export function MonthCalendar({
       {/* Slot picker — shown after date selection */}
       {selectedDate && selectedDayData && data && (
         <div className="space-y-2 animate-fade-in">
-          <p className="text-sm font-semibold text-gray-700">
+          <p className="text-sm font-semibold text-white">
             Créneaux disponibles le{" "}
-            <span className="text-emerald-700 capitalize">
+            <span className="text-[#1bbfa8] capitalize">
               {format(new Date(selectedDate + "T12:00:00"), "EEEE d MMMM", { locale: fr })}
             </span>
           </p>
@@ -232,8 +232,8 @@ export function MonthCalendar({
                   onClick={() => !isDisabled && onSelectSlot(slot.id)}
                   className={cn(
                     "flex flex-col items-center py-3 px-4 rounded-xl border-2 font-medium transition-all",
-                    isDisabled && "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed",
-                    !isDisabled && !isSlotSelected && "border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50",
+                    isDisabled && "border-white/10 bg-white/5 text-white/30 cursor-not-allowed",
+                    !isDisabled && !isSlotSelected && "border-white/20 bg-white/10 text-white hover:border-[#1bbfa8] hover:bg-white/20",
                     isSlotSelected && "border-emerald-500 bg-emerald-600 text-white shadow-md"
                   )}
                 >
@@ -243,7 +243,7 @@ export function MonthCalendar({
                     isPastSlot ? "text-gray-300" :
                     isFull ? "text-gray-300" :
                     isSlotSelected ? "text-emerald-100" :
-                    available <= 2 ? "text-amber-500 font-semibold" : "text-gray-400"
+                    available <= 2 ? "text-amber-400 font-semibold" : "text-white/50"
                   )}>
                     {isPastSlot ? "Passé" : isFull ? "Complet" : `${available}/${data.maxPerSlot} place${available > 1 ? "s" : ""}`}
                   </span>

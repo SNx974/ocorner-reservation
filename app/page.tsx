@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#f1f5f9]">
+    <main className="min-h-screen bg-[#0a1628]">
       {/* Hero */}
       <div className="bg-[#0a1628] text-white py-8 px-4">
         <div className="max-w-2xl mx-auto text-center">
@@ -34,7 +34,7 @@ export default function HomePage() {
 
       {/* Booking Form */}
       <div className="max-w-2xl mx-auto px-4 py-8 pb-16">
-        <Suspense fallback={<div className="text-center py-10 text-gray-500">Chargement...</div>}>
+        <Suspense fallback={<div className="text-center py-10 text-white/50">Chargement...</div>}>
           <BookingForm />
         </Suspense>
       </div>

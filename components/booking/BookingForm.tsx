@@ -290,22 +290,22 @@ export function BookingForm() {
             <div key={s} className="flex items-center flex-1">
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all shrink-0",
-                i < step ? "bg-emerald-500 text-white" :
-                i === step ? "bg-emerald-600 text-white ring-4 ring-emerald-200" :
-                "bg-gray-200 text-gray-500"
+                i < step ? "bg-[#1bbfa8] text-white" :
+                i === step ? "bg-[#1bbfa8] text-white ring-4 ring-[#1bbfa8]/30" :
+                "bg-white/20 text-white/40"
               )}>
                 {i < step ? "✓" : i + 1}
               </div>
               {i < STEPS.length - 1 && (
                 <div className={cn("h-1 flex-1 mx-1 rounded transition-all",
-                  i < step ? "bg-emerald-500" : "bg-gray-200")} />
+                  i < step ? "bg-[#1bbfa8]" : "bg-white/20")} />
               )}
             </div>
           ))}
         </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-white/50 mt-1">
           {STEPS.map((s, i) => (
-            <span key={s} className={cn(i === step && "text-emerald-700 font-semibold")}
+            <span key={s} className={cn(i === step && "text-[#1bbfa8] font-semibold")}
               style={{ width: `${100 / STEPS.length}%`, textAlign: "center" }}>
               {s}
             </span>
@@ -317,8 +317,8 @@ export function BookingForm() {
       {step === 0 && (
         <div className="animate-fade-in space-y-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Choisissez votre formule</h2>
-            <p className="text-gray-500 text-sm mt-1">Sélectionnez la formule adaptée à votre groupe</p>
+            <h2 className="text-2xl font-bold text-white">Choisissez votre formule</h2>
+            <p className="text-white/60 text-sm mt-1">Sélectionnez la formule adaptée à votre groupe</p>
           </div>
 
           <div className="flex gap-2 flex-wrap">
@@ -327,8 +327,8 @@ export function BookingForm() {
                 className={cn(
                   "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
                   categoryFilter === c.key
-                    ? "bg-emerald-600 text-white border-emerald-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-emerald-400"
+                    ? "bg-[#1bbfa8] text-white border-[#1bbfa8]"
+                    : "bg-white/10 text-white border-white/20 hover:border-[#1bbfa8]"
                 )}>
                 {c.label}
               </button>
@@ -361,11 +361,11 @@ export function BookingForm() {
             ? "translate-y-0 opacity-100"
             : "translate-y-full opacity-0 pointer-events-none"
         )}>
-          <div className="bg-white border-t border-gray-200 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] px-4 py-3 flex items-center gap-3">
+          <div className="bg-[#0d1f3c] border-t border-white/10 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] px-4 py-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-gray-400 leading-none mb-0.5">Formule sélectionnée</p>
-              <p className="font-bold text-gray-900 truncate text-sm">{selectedFormula?.name}</p>
-              <p className="text-xs text-emerald-600 font-semibold">
+              <p className="text-xs text-white/50 leading-none mb-0.5">Formule sélectionnée</p>
+              <p className="font-bold text-white truncate text-sm">{selectedFormula?.name}</p>
+              <p className="text-xs text-[#1bbfa8] font-semibold">
                 {selectedFormula ? formatPrice(selectedFormula.pricePerChild) + " / enfant" : ""}
               </p>
             </div>
@@ -384,9 +384,9 @@ export function BookingForm() {
       {step === 1 && (
         <div className="animate-fade-in space-y-5">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Choisissez votre date</h2>
-            <p className="text-gray-500 text-sm mt-1">
-              Formule : <span className="text-emerald-700 font-semibold">{selectedFormula?.name}</span>
+            <h2 className="text-2xl font-bold text-white">Choisissez votre date</h2>
+            <p className="text-white/60 text-sm mt-1">
+              Formule : <span className="text-[#1bbfa8] font-semibold">{selectedFormula?.name}</span>
             </p>
           </div>
 
@@ -409,13 +409,13 @@ export function BookingForm() {
           )}
 
           {form.date && form.timeSlotId && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-800 font-medium">
+            <div className="bg-[#1bbfa8]/20 border border-[#1bbfa8]/40 rounded-xl p-3 text-sm text-[#c8f135] font-medium">
               ✅ {format(new Date(form.date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
             </div>
           )}
 
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(0)}>
+            <Button type="button" variant="outline" onClick={() => setStep(0)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
               <ChevronLeft className="w-4 h-4 mr-1" /> Retour
             </Button>
             <Button type="button" size="lg" className="flex-1" onClick={goNext}>
@@ -429,9 +429,9 @@ export function BookingForm() {
       {step === 2 && (
         <div className="animate-fade-in space-y-5">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Vos informations</h2>
+            <h2 className="text-2xl font-bold text-white">Vos informations</h2>
             {form.date && (
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-white/60 text-sm mt-1">
                 {selectedFormula?.name} —{" "}
                 {format(new Date(form.date + "T12:00:00"), "d MMMM yyyy", { locale: fr })}
               </p>
@@ -439,30 +439,30 @@ export function BookingForm() {
           </div>
 
           {/* Children counter */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+          <div className="bg-white/10 rounded-2xl p-4">
+            <label className="block text-sm font-semibold text-white mb-3">
               <Users className="w-4 h-4 inline mr-1" />
               Nombre d'enfants
-              {selectedFormula && <span className="text-gray-400 font-normal"> (min. {selectedFormula.minChildren})</span>}
+              {selectedFormula && <span className="text-white/50 font-normal"> (min. {selectedFormula.minChildren})</span>}
             </label>
             <div className="flex items-center gap-3">
               <button type="button"
                 onClick={() => set("childrenCount", Math.max(1, form.childrenCount - 1))}
-                className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center text-2xl font-bold hover:border-emerald-500 transition-colors bg-white">
+                className="w-12 h-12 rounded-xl border-2 border-white/30 flex items-center justify-center text-2xl font-bold hover:border-[#1bbfa8] transition-colors bg-white/10 text-white">
                 −
               </button>
-              <div className="w-16 h-12 text-center text-2xl font-bold rounded-xl border-2 border-gray-300 flex items-center justify-center bg-white">
+              <div className="w-16 h-12 text-center text-2xl font-bold rounded-xl border-2 border-white/30 flex items-center justify-center bg-white/10 text-white">
                 {form.childrenCount}
               </div>
               <button type="button"
                 onClick={() => set("childrenCount", form.childrenCount + 1)}
-                className="w-12 h-12 rounded-xl border-2 border-gray-300 flex items-center justify-center text-2xl font-bold hover:border-emerald-500 transition-colors bg-white">
+                className="w-12 h-12 rounded-xl border-2 border-white/30 flex items-center justify-center text-2xl font-bold hover:border-[#1bbfa8] transition-colors bg-white/10 text-white">
                 +
               </button>
               {selectedFormula && (
                 <div className="ml-1">
-                  <p className="text-2xl font-extrabold text-emerald-600">{formatPrice(total)}</p>
-                  <p className="text-xs text-gray-400">{formatPrice(selectedFormula.pricePerChild)} × {form.childrenCount}</p>
+                  <p className="text-2xl font-extrabold text-[#c8f135]">{formatPrice(total)}</p>
+                  <p className="text-xs text-white/50">{formatPrice(selectedFormula.pricePerChild)} × {form.childrenCount}</p>
                 </div>
               )}
             </div>
@@ -475,37 +475,40 @@ export function BookingForm() {
 
           {/* Contact fields */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <User className="w-4 h-4 text-emerald-600" /> Coordonnées
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <User className="w-4 h-4 text-[#1bbfa8]" /> Coordonnées
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom complet *</label>
+                <label className="block text-sm font-medium text-white/80 mb-1.5">Nom complet *</label>
                 <Input placeholder="Jean Dupont" value={form.clientName}
-                  onChange={e => set("clientName", e.target.value)} />
+                  onChange={e => set("clientName", e.target.value)}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#1bbfa8]" />
                 {errors.clientName && <p className="text-red-500 text-xs mt-1">{errors.clientName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-medium text-white/80 mb-1.5">
                   <Phone className="w-3.5 h-3.5 inline mr-1" />Téléphone *
                 </label>
                 <Input type="tel" placeholder="0692 XX XX XX" value={form.clientPhone}
-                  onChange={e => set("clientPhone", e.target.value)} />
+                  onChange={e => set("clientPhone", e.target.value)}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#1bbfa8]" />
                 {errors.clientPhone && <p className="text-red-500 text-xs mt-1">{errors.clientPhone}</p>}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label className="block text-sm font-medium text-white/80 mb-1.5">
                   <Mail className="w-3.5 h-3.5 inline mr-1" />Email *
                 </label>
                 <Input type="email" placeholder="jean.dupont@email.com" value={form.clientEmail}
-                  onChange={e => set("clientEmail", e.target.value)} />
+                  onChange={e => set("clientEmail", e.target.value)}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#1bbfa8]" />
                 {errors.clientEmail && <p className="text-red-500 text-xs mt-1">{errors.clientEmail}</p>}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes (optionnel)</label>
+                <label className="block text-sm font-medium text-white/80 mb-1.5">Notes (optionnel)</label>
                 <textarea rows={2} placeholder="Allergie, demande spéciale..."
                   value={form.notes} onChange={e => set("notes", e.target.value)}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none" />
+                  className="w-full rounded-lg border border-white/20 bg-white/10 text-white placeholder:text-white/40 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1bbfa8] resize-none" />
               </div>
             </div>
           </div>
@@ -518,7 +521,7 @@ export function BookingForm() {
           )}
 
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(1)}>
+            <Button type="button" variant="outline" onClick={() => setStep(1)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
               <ChevronLeft className="w-4 h-4 mr-1" /> Retour
             </Button>
             <Button type="button" size="lg" className="flex-1" onClick={goNext}>
@@ -531,13 +534,13 @@ export function BookingForm() {
       {/* ── STEP 3 : Paiement ── */}
       {step === 3 && selectedFormula && (
         <div className="animate-fade-in">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Mode de paiement</h2>
+          <h2 className="text-2xl font-bold text-white mb-4">Mode de paiement</h2>
 
           {/* Promo code */}
           {!reservationResult && (
-            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                <Tag className="w-4 h-4 text-emerald-600" /> Code promo
+            <div className="bg-white/10 rounded-2xl p-4 mb-4">
+              <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-[#1bbfa8]" /> Code promo
               </label>
               {promoResult ? (
                 <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
@@ -559,7 +562,7 @@ export function BookingForm() {
                   <Input placeholder="Code promo" value={promoCode}
                     onChange={e => { setPromoCode(e.target.value); setPromoError(null); }}
                     onKeyDown={e => e.key === "Enter" && validatePromo()}
-                    className="flex-1" />
+                    className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/40 focus-visible:ring-[#1bbfa8]" />
                   <button type="button" onClick={validatePromo} disabled={promoLoading || !promoCode.trim()}
                     className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                     {promoLoading ? "..." : "Appliquer"}
@@ -597,7 +600,7 @@ export function BookingForm() {
 
           {!reservationResult && (
             <div className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setStep(2)}>
+              <Button type="button" variant="outline" onClick={() => setStep(2)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
             </div>

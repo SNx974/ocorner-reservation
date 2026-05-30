@@ -64,7 +64,7 @@ function StripeCheckoutForm({ onSuccess }: { onSuccess: () => void }) {
           ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Traitement...</>
           : <><Shield className="w-5 h-5 mr-2" />Payer maintenant</>}
       </Button>
-      <p className="text-xs text-center text-gray-400 flex items-center justify-center gap-1">
+      <p className="text-xs text-center text-white/40 flex items-center justify-center gap-1">
         <Shield className="w-3 h-3" /> Paiement sécurisé via Stripe
       </p>
     </form>
@@ -109,23 +109,23 @@ function DemoCheckoutForm({ amount, label, onSuccess, reference }: {
       </div>
 
       {/* Fake card form */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
-        <p className="text-sm font-semibold text-gray-700">Carte bancaire (simulation)</p>
+      <div className="bg-white/5 border border-white/20 rounded-xl p-4 space-y-3">
+        <p className="text-sm font-semibold text-white">Carte bancaire (simulation)</p>
         <div>
-          <label className="block text-xs text-gray-500 mb-1">Numéro de carte</label>
+          <label className="block text-xs text-white/60 mb-1">Numéro de carte</label>
           <input value={cardNum} onChange={e => setCardNum(e.target.value)}
-            className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none" />
+            className="w-full h-10 rounded-lg border border-white/20 bg-white/10 text-white px-3 text-sm font-mono focus:ring-2 focus:ring-[#1bbfa8] outline-none" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Expiration</label>
+            <label className="block text-xs text-white/60 mb-1">Expiration</label>
             <input value={expiry} onChange={e => setExpiry(e.target.value)}
-              className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="w-full h-10 rounded-lg border border-white/20 bg-white/10 text-white px-3 text-sm font-mono focus:ring-2 focus:ring-[#1bbfa8] outline-none" />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">CVC</label>
+            <label className="block text-xs text-white/60 mb-1">CVC</label>
             <input value={cvc} onChange={e => setCvc(e.target.value)}
-              className="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:ring-2 focus:ring-emerald-500 outline-none" />
+              className="w-full h-10 rounded-lg border border-white/20 bg-white/10 text-white px-3 text-sm font-mono focus:ring-2 focus:ring-[#1bbfa8] outline-none" />
           </div>
         </div>
       </div>
@@ -193,27 +193,27 @@ export function PaymentSection({
               className={cn(
                 "w-full text-left p-4 rounded-2xl border-2 transition-all",
                 paymentType === opt.id
-                  ? "border-emerald-500 bg-emerald-50 ring-4 ring-emerald-100"
-                  : "border-gray-200 bg-white hover:border-gray-300"
+                  ? "border-[#1bbfa8] bg-[#1bbfa8]/10 ring-4 ring-[#1bbfa8]/20"
+                  : "border-white/20 bg-white/5 hover:border-white/40"
               )}>
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                  paymentType === opt.id ? "bg-emerald-600 text-white" : "bg-gray-100 text-gray-600"
+                  paymentType === opt.id ? "bg-[#1bbfa8] text-white" : "bg-white/10 text-white/60"
                 )}>
                   {opt.icon}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-bold text-gray-900">{opt.title}</p>
+                    <p className="font-bold text-white">{opt.title}</p>
                     {opt.badge && (
                       <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", opt.badgeColor)}>
                         {opt.badge}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">{opt.description}</p>
-                  <p className="text-sm font-semibold text-emerald-700 mt-0.5">{opt.price}</p>
+                  <p className="text-sm text-white/60">{opt.description}</p>
+                  <p className="text-sm font-semibold text-[#c8f135] mt-0.5">{opt.price}</p>
                 </div>
                 <div className={cn(
                   "w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -240,9 +240,9 @@ export function PaymentSection({
 
       {/* Real Stripe Elements */}
       {showStripeForm && stripePromise && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-emerald-600" />
+        <div className="bg-white/10 border border-white/20 rounded-2xl p-5">
+          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-[#1bbfa8]" />
             {paymentType === "online_full" ? `Payer ${formatPrice(total)}` : `Payer l'acompte ${formatPrice(deposit)}`}
           </h3>
           <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -253,9 +253,9 @@ export function PaymentSection({
 
       {/* Demo form */}
       {showDemoForm && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-emerald-600" />
+        <div className="bg-white/10 border border-white/20 rounded-2xl p-5">
+          <h3 className="font-bold text-white mb-4 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-[#1bbfa8]" />
             {paymentType === "online_full" ? "Paiement complet" : "Paiement de l'acompte"}
           </h3>
           <DemoCheckoutForm

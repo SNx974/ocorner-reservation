@@ -22,32 +22,32 @@ interface FormulaCardProps {
 
 const categoryStyles: Record<string, { border: string; bg: string; badge: string; icon: string; accent: string }> = {
   marmaille: {
-    border: "border-emerald-300 hover:border-emerald-500",
-    bg: "bg-gradient-to-br from-emerald-50 to-green-50",
-    badge: "bg-emerald-100 text-emerald-800",
+    border: "border-[#1bbfa8]/40 hover:border-[#1bbfa8]",
+    bg: "bg-white/5",
+    badge: "bg-[#1bbfa8]/20 text-[#1bbfa8]",
     icon: "🎡",
-    accent: "text-emerald-600",
+    accent: "text-[#1bbfa8]",
   },
   marmaille_foot: {
-    border: "border-purple-300 hover:border-purple-500",
-    bg: "bg-gradient-to-br from-purple-50 to-violet-50",
-    badge: "bg-purple-100 text-purple-800",
+    border: "border-purple-400/40 hover:border-purple-400",
+    bg: "bg-white/5",
+    badge: "bg-purple-400/20 text-purple-300",
     icon: "⚽🎡",
-    accent: "text-purple-600",
+    accent: "text-purple-300",
   },
   foot: {
-    border: "border-blue-300 hover:border-blue-500",
-    bg: "bg-gradient-to-br from-blue-50 to-sky-50",
-    badge: "bg-blue-100 text-blue-800",
+    border: "border-blue-400/40 hover:border-blue-400",
+    bg: "bg-white/5",
+    badge: "bg-blue-400/20 text-blue-300",
     icon: "⚽",
-    accent: "text-blue-600",
+    accent: "text-blue-300",
   },
 };
 
 const selectedStyles: Record<string, string> = {
-  marmaille: "border-emerald-500 ring-4 ring-emerald-200 shadow-emerald-100",
-  marmaille_foot: "border-purple-500 ring-4 ring-purple-200 shadow-purple-100",
-  foot: "border-blue-500 ring-4 ring-blue-200 shadow-blue-100",
+  marmaille: "border-[#1bbfa8] ring-4 ring-[#1bbfa8]/20",
+  marmaille_foot: "border-purple-400 ring-4 ring-purple-400/20",
+  foot: "border-blue-400 ring-4 ring-blue-400/20",
 };
 
 export function FormulaCard({ formula, selected, onPreview }: FormulaCardProps) {
@@ -77,16 +77,16 @@ export function FormulaCard({ formula, selected, onPreview }: FormulaCardProps) 
           <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", style.badge)}>
             {getCategoryLabel(formula.category)}
           </span>
-          <h3 className="mt-1.5 font-bold text-gray-900 text-base leading-tight">{formula.name}</h3>
+          <h3 className="mt-1.5 font-bold text-white text-base leading-tight">{formula.name}</h3>
           {formula.includes && (
-            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{formula.includes}</p>
+            <p className="text-sm text-white/60 mt-1 line-clamp-2">{formula.includes}</p>
           )}
           <div className="flex items-center justify-between mt-3">
-            <p className="text-2xl font-extrabold text-gray-900">
+            <p className="text-2xl font-extrabold text-white">
               {formatPrice(formula.pricePerChild)}
-              <span className="text-sm font-normal text-gray-500">/enfant</span>
+              <span className="text-sm font-normal text-white/50">/enfant</span>
             </p>
-            <div className="flex items-center gap-1 text-xs text-gray-500">
+            <div className="flex items-center gap-1 text-xs text-white/50">
               <Users className="w-3.5 h-3.5" />
               <span>min. {formula.minChildren}</span>
             </div>
@@ -96,7 +96,7 @@ export function FormulaCard({ formula, selected, onPreview }: FormulaCardProps) 
 
       {/* "Voir les détails" hint */}
       <div className={cn(
-        "mt-3 pt-3 border-t border-black/5 flex items-center justify-between text-xs font-medium transition-all",
+        "mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-medium transition-all",
         style.accent
       )}>
         <span className="flex items-center gap-1">
