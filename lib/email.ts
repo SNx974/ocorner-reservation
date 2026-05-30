@@ -180,7 +180,7 @@ export function buildBirthdayEmailHtml(
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
   <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);text-align:center;line-height:0;">
-    <img src="${baseUrl}/logo-anniversaire.png" alt="${parkName} Anniversaire"
+    <img src="${baseUrl}/ANNIF.png" alt="${parkName} Anniversaire"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
   </div>
   <div style="padding:8px 32px 0;text-align:center;">
@@ -236,7 +236,7 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
   const html = `
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
   <div style="background:linear-gradient(135deg,#1d4ed8 0%,#7c3aed 100%);text-align:center;line-height:0;">
-    <img src="${baseUrl}/logo-foot.png" alt="${parkName} Foot à 5"
+    <img src="${baseUrl}/FOOT%20A%205%20MAIL.png" alt="${parkName} Foot à 5"
       style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
   </div>
   <div style="padding:8px 32px 0;text-align:center;">
