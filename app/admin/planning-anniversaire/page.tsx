@@ -643,7 +643,7 @@ export default function PlanningAnniversairePage() {
 
       {/* ─── WEEK VIEW ─── */}
       {!loading && view === "week" && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
           {/* Nav */}
           <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 flex-wrap">
             <button onClick={() => setWeekStart(d => subDays(d, 7))}

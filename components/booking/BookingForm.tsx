@@ -415,7 +415,7 @@ export function BookingForm() {
           )}
 
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(0)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+            <Button type="button" variant="outline" onClick={() => setStep(0)} className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
               <ChevronLeft className="w-4 h-4 mr-1" /> Retour
             </Button>
             <Button type="button" size="lg" className="flex-1" onClick={goNext}>
@@ -521,7 +521,7 @@ export function BookingForm() {
           )}
 
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={() => setStep(1)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+            <Button type="button" variant="outline" onClick={() => setStep(1)} className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
               <ChevronLeft className="w-4 h-4 mr-1" /> Retour
             </Button>
             <Button type="button" size="lg" className="flex-1" onClick={goNext}>
@@ -600,7 +600,7 @@ export function BookingForm() {
 
           {!reservationResult && (
             <div className="mt-4">
-              <Button type="button" variant="outline" onClick={() => setStep(2)} className="border-white/30 text-white hover:bg-white/10 hover:text-white">
+              <Button type="button" variant="outline" onClick={() => setStep(2)} className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Retour
               </Button>
             </div>

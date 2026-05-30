@@ -492,7 +492,7 @@ function WeeklyPlanning({ reservations, token, onReload }: { reservations: Reser
         />
       )}
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-wrap gap-2">
         <h2 className="font-bold text-gray-900 flex items-center gap-2">
           <Calendar className="w-5 h-5 text-emerald-600" />
           Planning de la semaine
@@ -644,8 +644,8 @@ export default function AdminDashboard() {
     badgeVariantMap[getStatusColor(status)] ?? "secondary";
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-500 text-sm">Vue d'ensemble en temps réel</p>

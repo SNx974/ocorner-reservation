@@ -235,7 +235,7 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
       )}
 
       <Link href="/">
-        <Button variant="outline" size="lg" className="w-full border-white/30 text-white hover:bg-white/10 hover:text-white">
+        <Button variant="outline" size="lg" className="w-full bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">
           <Home className="w-5 h-5 mr-2" /> Retour à l'accueil
         </Button>
       </Link>

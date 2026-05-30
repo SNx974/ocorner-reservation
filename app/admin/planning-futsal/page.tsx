@@ -517,12 +517,12 @@ export default function FutsalPlanningPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-blue-600" /> Planning Futsal
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" /> Planning Futsal
           </h1>
-          <p className="text-gray-500 text-sm">Vue journalière — 3 terrains</p>
+          <p className="text-gray-500 text-xs md:text-sm">Vue journalière — 3 terrains</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -607,7 +607,8 @@ export default function FutsalPlanningPage() {
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+          <div className="min-w-[420px]">
           {/* Header row */}
           <div className="grid grid-cols-4 border-b border-gray-200 bg-gray-50">
             <div className="px-4 py-3 text-xs font-bold text-gray-400 uppercase">Heure</div>
@@ -695,12 +696,13 @@ export default function FutsalPlanningPage() {
               );
             })
           )}
+          </div>{/* end min-w wrapper */}
         </div>
       )}
 
       {/* Summary bar */}
       {dayReservations.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
           {COURTS.map(c => {
             const cfg = courtConfig[c - 1];
             const courtRes = dayReservations.filter(r => r.courtNumber === c);
