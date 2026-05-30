@@ -381,12 +381,15 @@ export async function sendTestEmail(toEmail: string) {
   const parkName = tpl.email_park_name ?? "Ocorner";
   const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
 
+  const baseUrl = getPublicUrl();
   const html = baseLayout(`
 <div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);padding:36px 32px;text-align:center;">
-    <div style="font-size:48px;margin-bottom:8px;">📧</div>
-    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">${parkName}</h1>
-    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Mail de test — Configuration Brevo</p>
+  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);text-align:center;line-height:0;">
+    <img src="${baseUrl}/ANNIF.png" alt="${parkName}"
+      style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
+  </div>
+  <div style="padding:8px 32px 0;text-align:center;">
+    <p style="margin:0;color:#475569;font-size:14px;">Mail de test — Configuration Brevo</p>
   </div>
   <div style="padding:32px;">
     <p style="font-size:16px;color:#1e293b;">✅ <strong>Félicitations !</strong></p>
