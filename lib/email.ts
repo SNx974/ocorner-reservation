@@ -1,11 +1,40 @@
-import { Resend } from "resend";
 import { formatDate, formatPrice } from "./utils";
 import { EMAIL_TEMPLATE_DEFAULTS } from "./email-template-defaults";
 
-function getResend() {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  return new Resend(key);
+// ─── Brevo sender ─────────────────────────────────────────────────────
+async function sendViaBrevo(opts: {
+  from: { name: string; email: string };
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return { ok: false, error: "BREVO_API_KEY manquant" };
+
+  try {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: opts.from.name, email: opts.from.email },
+        to: [{ email: opts.to }],
+        subject: opts.subject,
+        htmlContent: opts.html,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      return { ok: false, error: `Brevo ${res.status}: ${body}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 // ─── Load template settings from DB ──────────────────────────────────
@@ -240,7 +269,6 @@ async function sendAndSave(opts: {
   to: string; subject: string; html: string;
   type: string; reference?: string; reservationId?: string;
 }) {
-  const resend = getResend();
   let status = "sent";
   let errorMessage: string | undefined;
 
@@ -248,20 +276,16 @@ async function sendAndSave(opts: {
   const fromName = tpl.email_from_name ?? EMAIL_TEMPLATE_DEFAULTS.email_from_name;
   const fromEmail = process.env.FROM_EMAIL ?? "noreply@ocorner.re";
 
-  if (resend) {
-    try {
-      await resend.emails.send({
-        from: `${fromName} <${fromEmail}>`,
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-      });
-    } catch (e) {
-      status = "failed";
-      errorMessage = e instanceof Error ? e.message : String(e);
-    }
-  } else {
-    status = "no_key";
+  const result = await sendViaBrevo({
+    from: { name: fromName, email: fromEmail },
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+  });
+
+  if (!result.ok) {
+    status = result.error === "BREVO_API_KEY manquant" ? "no_key" : "failed";
+    errorMessage = result.error;
   }
 
   await saveEmail({ ...opts, status, errorMessage });
@@ -336,6 +360,59 @@ export async function sendCancellationEmail(data: ReservationEmailData) {
 </div>`, `Annulation ${data.reference}`, phone);
 
   return sendAndSave({ to: data.clientEmail, subject: `❌ Annulation réservation ${data.reference} — ${parkName}`, html, type: "cancellation", reference: data.reference, reservationId: data.reservationId });
+}
+
+// ─── Test email ───────────────────────────────────────────────────────
+export async function sendTestEmail(toEmail: string) {
+  const tpl = await getTemplateSettings();
+  const fromName = tpl.email_from_name ?? EMAIL_TEMPLATE_DEFAULTS.email_from_name;
+  const fromEmail = process.env.FROM_EMAIL ?? "noreply@ocorner.re";
+  const parkName = tpl.email_park_name ?? "Ocorner";
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+
+  const html = baseLayout(`
+<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+  <div style="background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%);padding:36px 32px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">📧</div>
+    <h1 style="margin:0;color:white;font-size:26px;font-weight:800;">${parkName}</h1>
+    <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:15px;">Mail de test — Configuration Brevo</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="font-size:16px;color:#1e293b;">✅ <strong>Félicitations !</strong></p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">
+      Votre configuration email via <strong>Brevo</strong> fonctionne correctement.<br/>
+      Les emails de confirmation, rappel et annulation seront envoyés depuis :<br/>
+      <strong style="color:#10b981;">${fromName} &lt;${fromEmail}&gt;</strong>
+    </p>
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0;font-size:14px;color:#15803d;">
+        🕐 Envoyé le <strong>${new Date().toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" })}</strong>
+      </p>
+    </div>
+  </div>
+  <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#94a3b8;">Ceci est un email de test — ${parkName}, La Réunion</p>
+  </div>
+</div>`, `Test email — ${parkName}`, phone);
+
+  const result = await sendViaBrevo({
+    from: { name: fromName, email: fromEmail },
+    to: toEmail,
+    subject: `📧 Test email — ${parkName}`,
+    html,
+  });
+
+  // Save to DB
+  await saveEmail({
+    to: toEmail,
+    subject: `📧 Test email — ${parkName}`,
+    html,
+    type: "test",
+    status: result.ok ? "sent" : "failed",
+    errorMessage: result.error,
+  });
+
+  return result;
 }
 
 // Re-export for admin preview

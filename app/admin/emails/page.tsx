@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAdmin } from "../admin-context";
 import {
   Mail, Search, RefreshCw, Send, Download, Eye, X,
-  CheckCircle, AlertTriangle, Clock, Filter, ChevronLeft, ChevronRight,
+  CheckCircle, AlertTriangle, Clock, Filter, ChevronLeft, ChevronRight, FlaskConical, Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   reminder:     { label: "Rappel",       color: "bg-amber-100 text-amber-700" },
   cancellation: { label: "Annulation",   color: "bg-red-100 text-red-700" },
   manual:       { label: "Renvoi",       color: "bg-blue-100 text-blue-700" },
+  test:         { label: "Test",         color: "bg-indigo-100 text-indigo-700" },
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -58,6 +59,9 @@ export default function EmailsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [resending, setResending] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -83,6 +87,21 @@ export default function EmailsPage() {
     const data = await res.json();
     setPreview({ id: data.id, subject: data.subject, to: data.to, html: data.htmlContent, sentAt: data.sentAt });
     setPreviewLoading(false);
+  }
+
+  async function sendTestMail() {
+    if (!testEmailTo.includes("@")) { showToast("❌ Email invalide"); return; }
+    setSendingTest(true);
+    const res = await fetch("/api/admin/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token! },
+      body: JSON.stringify({ action: "test", to: testEmailTo }),
+    });
+    const data = await res.json();
+    setSendingTest(false);
+    setShowTestModal(false);
+    if (data.success) { showToast(`✅ Mail de test envoyé à ${testEmailTo} !`); load(); }
+    else showToast(`❌ Erreur : ${data.error ?? "Échec de l'envoi"}`);
   }
 
   async function resend(id: string) {
@@ -136,10 +155,53 @@ export default function EmailsPage() {
           </h1>
           <p className="text-gray-500 text-sm mt-0.5">{total} email{total !== 1 ? "s" : ""} au total</p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} className="gap-2">
-          <RefreshCw className="w-4 h-4" /> Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setShowTestModal(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+            <FlaskConical className="w-4 h-4" /> Envoyer un mail de test
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} className="gap-2">
+            <RefreshCw className="w-4 h-4" /> Actualiser
+          </Button>
+        </div>
       </div>
+
+      {/* Test email modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-indigo-600" /> Mail de test Brevo
+              </h3>
+              <button onClick={() => setShowTestModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Envoyez un email de test pour vérifier que votre configuration <strong>Brevo</strong> fonctionne correctement.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Adresse email de destination</label>
+            <Input
+              type="email"
+              placeholder="votre@email.com"
+              value={testEmailTo}
+              onChange={e => setTestEmailTo(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && sendTestMail()}
+              className="mb-4"
+            />
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowTestModal(false)}>Annuler</Button>
+              <Button
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                onClick={sendTestMail}
+                disabled={sendingTest || !testEmailTo.includes("@")}
+              >
+                {sendingTest ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />Envoi...</> : <><Send className="w-4 h-4 mr-1" />Envoyer</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-5">

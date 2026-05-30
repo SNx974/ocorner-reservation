@@ -51,41 +51,70 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ emails, total, page, pages: Math.ceil(total / limit) });
 }
 
-// POST — resend an email by its ID
+// POST — resend an existing email OR send a test email
+// body: { id } → resend existing
+// body: { action: "test", to: "..." } → send test email
 export async function POST(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = await req.json();
+  const body = await req.json();
+
+  // ── Test email ────────────────────────────────────────────────────────
+  if (body.action === "test") {
+    const to = body.to as string | undefined;
+    if (!to || !to.includes("@")) {
+      return NextResponse.json({ error: "Adresse email invalide" }, { status: 400 });
+    }
+    const { sendTestEmail } = await import("@/lib/email");
+    const result = await sendTestEmail(to);
+    if (result.ok) {
+      return NextResponse.json({ success: true, message: `Email de test envoyé à ${to}` });
+    } else {
+      return NextResponse.json({ success: false, error: result.error }, { status: 500 });
+    }
+  }
+
+  // ── Resend existing email ─────────────────────────────────────────────
+  const { id } = body;
   if (!id) return NextResponse.json({ error: "id manquant" }, { status: 400 });
 
   const email = await prisma.sentEmail.findUnique({ where: { id } });
   if (!email) return NextResponse.json({ error: "Email introuvable" }, { status: 404 });
 
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    // Save a new "resend" record even without Resend key
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
     const saved = await prisma.sentEmail.create({
       data: {
         to: email.to, subject: `[Renvoi] ${email.subject}`,
         htmlContent: email.htmlContent, type: "manual",
         reference: email.reference, status: "no_key",
+        errorMessage: "BREVO_API_KEY non configurée",
       },
     });
-    return NextResponse.json({ success: true, newId: saved.id, warning: "Clé Resend non configurée" });
+    return NextResponse.json({ success: false, newId: saved.id, warning: "Clé Brevo non configurée" });
   }
 
-  const { Resend } = await import("resend");
-  const resend = new Resend(key);
-
+  // Send via Brevo
+  const fromEmail = process.env.FROM_EMAIL ?? "noreply@ocorner.re";
   let status = "sent";
   let errorMessage: string | undefined;
+
   try {
-    await resend.emails.send({
-      from: `Ocorner <${process.env.FROM_EMAIL ?? "noreply@ocorner.re"}>`,
-      to: email.to,
-      subject: `[Renvoi] ${email.subject}`,
-      html: email.htmlContent,
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "accept": "application/json", "api-key": apiKey, "content-type": "application/json" },
+      body: JSON.stringify({
+        sender: { name: "Ocorner", email: fromEmail },
+        to: [{ email: email.to }],
+        subject: `[Renvoi] ${email.subject}`,
+        htmlContent: email.htmlContent,
+      }),
     });
+    if (!res.ok) {
+      const txt = await res.text();
+      status = "failed";
+      errorMessage = `Brevo ${res.status}: ${txt}`;
+    }
   } catch (e) {
     status = "failed";
     errorMessage = e instanceof Error ? e.message : String(e);
@@ -99,5 +128,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ success: true, newId: saved.id, status });
+  return NextResponse.json({ success: status === "sent", newId: saved.id, status, error: errorMessage });
 }
