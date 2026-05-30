@@ -25,7 +25,8 @@
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\" -Recurse | Where-Object {$_.FullName -match \"\\(app|components\\)\" } | Select-Object FullName)",
       "Bash(New-Item -Path \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\" -ItemType File -Force)",
       "Bash(Out-Null)",
-      "Bash(Get-Content \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\")"
+      "Bash(Get-Content \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\")",
+      "Bash(git mv *)"
     ]
   }
 }

@@ -3,7 +3,7 @@ import { Users, Calendar, CreditCard, ArrowRight, Trophy } from "lucide-react";
 
 export default function FutsalPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900">
+    <div className="min-h-screen bg-[#0d1117]">
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between max-w-5xl mx-auto">
         <Link href="/" className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm">
@@ -20,9 +20,9 @@ export default function FutsalPage() {
         <div className="text-7xl mb-4">⚽</div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-3 leading-tight">
           Réservez votre terrain
-          <span className="block text-blue-300">Foot à 5</span>
+          <span className="block" style={{ color: "#1bbfa8" }}>Foot à 5</span>
         </h1>
-        <p className="text-blue-200 text-lg">
+        <p className="text-white/60 text-lg">
           3 terrains disponibles · 10h à 22h · À partir de 10 joueurs
         </p>
       </div>
@@ -33,8 +33,8 @@ export default function FutsalPage() {
         <Link href="/futsal/reserver"
           className="flex items-center justify-between bg-white rounded-2xl p-5 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all group">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Calendar className="w-7 h-7 text-blue-700" />
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: "#1bbfa820" }}>
+              <Calendar className="w-7 h-7" style={{ color: "#1bbfa8" }} />
             </div>
             <div>
               <p className="font-bold text-gray-900 text-lg">Je réserve un terrain</p>
@@ -46,7 +46,7 @@ export default function FutsalPage() {
 
         {/* Pay my spot */}
         <Link href="/futsal/payer"
-          className="flex items-center justify-between bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-5 hover:bg-white/20 transition-all group">
+          className="flex items-center justify-between backdrop-blur-sm border rounded-2xl p-5 hover:bg-white/5 transition-all group" style={{ borderColor: "#1bbfa840", background: "#1bbfa810" }}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
               <CreditCard className="w-7 h-7 text-white" />

@@ -3,20 +3,29 @@ import { Suspense } from "react";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-blue-50">
+    <main className="min-h-screen bg-[#f1f5f9]">
       {/* Hero */}
-      <div className="gradient-hero text-white py-10 px-4">
+      <div className="bg-[#0d1117] text-white py-10 px-4">
         <div className="max-w-2xl mx-auto text-center">
           <div className="text-5xl mb-3">🎡⚽</div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-            Ocorner Réservation
+            <span style={{ color: "#1bbfa8" }}>Oc</span>orner Réservation
           </h1>
-          <p className="mt-2 text-white/85 text-lg">
+          <p className="mt-2 text-white/70 text-lg">
             Anniversaires & Foot à 5 — Réservez en ligne !
           </p>
           <div className="flex flex-wrap justify-center gap-3 mt-4 text-sm">
-            {["🎡 Parc de jeux", "⚽ Foot à 5", "🥞 Crêpes & Déjeuner", "👶 Dès 6 enfants"].map(t => (
-              <span key={t} className="bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">{t}</span>
+            {[
+              { label: "🎡 Parc de jeux", color: "#c8f135" },
+              { label: "⚽ Foot à 5",     color: "#1bbfa8" },
+              { label: "🥞 Crêpes & Déjeuner", color: "#c8f135" },
+              { label: "👶 Dès 6 enfants",     color: "#1bbfa8" },
+            ].map(t => (
+              <span key={t.label}
+                style={{ border: `1px solid ${t.color}40`, color: t.color }}
+                className="px-3 py-1 rounded-full text-sm font-semibold backdrop-blur-sm bg-white/5">
+                {t.label}
+              </span>
             ))}
           </div>
         </div>
@@ -30,9 +39,9 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t bg-white py-6 text-center text-sm text-gray-500">
-        <p>📍 Ocorner — Réunion</p>
-        <p className="mt-1">📞 Contact : 0692 XX XX XX</p>
+      <footer className="bg-[#0d1117] py-6 text-center text-sm">
+        <p className="font-bold tracking-widest uppercase" style={{ color: "#1bbfa8" }}>Ocorner — La Réunion</p>
+        <p className="mt-1" style={{ color: "#c8f135" }}>📞 Contact : 0692 XX XX XX</p>
       </footer>
     </main>
   );
