@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const minutes: number[] = mode === "hour" ? [0] : mode === "half" ? [30] : [0, 30];
 
   const entries: { hour: number; minute: number; isActive: boolean }[] = [];
-  for (let h = 10; h <= 21; h++) {
+  for (let h = 10; h <= 22; h++) {
     for (const m of minutes) {
       entries.push({ hour: h, minute: m, isActive: true });
     }

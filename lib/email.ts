@@ -453,5 +453,72 @@ export async function sendTestEmail(toEmail: string) {
   return result;
 }
 
+// ─── Reschedule email ─────────────────────────────────────────────────
+export async function sendRescheduleEmail(data: {
+  clientName: string; clientEmail: string; reference: string;
+  formulaName: string; isBirthday: boolean;
+  oldDate: Date | string; oldTime: string;
+  newDate: Date | string; newTime: string;
+  reservationId?: string;
+}) {
+  const tpl = await getTemplateSettings();
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const parkName = tpl.email_park_name ?? "Ocorner";
+  const accentColor = data.isBirthday ? "#c8f135" : "#1bbfa8";
+  const baseUrl = getPublicUrl();
+  const logoSrc = data.isBirthday
+    ? `${baseUrl}/logo-anniversaire.png`
+    : `${baseUrl}/logo-foot.png`;
+  const emoji = data.isBirthday ? "🎉" : "⚽";
+
+  const html = baseLayout(`
+<div>
+  <div style="background:#0a1628;text-align:center;line-height:0;">
+    <img src="${logoSrc}" alt="${parkName}" style="width:100%;max-width:600px;height:auto;display:block;margin:0 auto;" />
+  </div>
+  <div style="background:#0a1628;padding:8px 32px 16px;text-align:center;">
+    <p style="margin:0;color:${accentColor};font-size:13px;font-family:'Barlow Condensed','Barlow',Arial,sans-serif;font-weight:700;letter-spacing:2px;text-transform:uppercase;">📅 Modification de réservation</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">
+      Votre réservation <strong>${data.reference}</strong> a été <strong>décalée</strong> par notre équipe.
+      Voici le récapitulatif de la modification :
+    </p>
+    <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:14px;color:#92400e;font-weight:700;">❌ Ancien créneau</p>
+      <p style="margin:0;font-size:14px;color:#78350f;">
+        📅 ${formatDate(data.oldDate)} — ⏰ ${data.oldTime}
+      </p>
+    </div>
+    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:16px 20px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:14px;color:#065f46;font-weight:700;">${emoji} Nouveau créneau</p>
+      <p style="margin:0;font-size:14px;color:#047857;font-weight:700;">
+        📅 ${formatDate(data.newDate)} — ⏰ ${data.newTime}
+      </p>
+    </div>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">
+      Toutes les autres informations de votre réservation restent inchangées.
+      Pour toute question, contactez-nous :
+    </p>
+    <a href="tel:${phone.replace(/\s/g, '')}" style="display:inline-block;font-size:18px;font-weight:700;color:#10b981;text-decoration:none;">
+      📞 ${phone}
+    </a>
+  </div>
+  <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center;">
+    <p style="margin:0;font-size:12px;color:#94a3b8;">Réf. <strong>${data.reference}</strong> · ${parkName}, La Réunion</p>
+  </div>
+</div>`, `Modification réservation ${data.reference}`, phone);
+
+  return sendAndSave({
+    to: data.clientEmail,
+    subject: `📅 Modification créneau — ${data.reference} · ${parkName}`,
+    html,
+    type: "reschedule",
+    reference: data.reference,
+    reservationId: data.reservationId,
+  });
+}
+
 // Re-export for admin preview
 export { getTemplateSettings };

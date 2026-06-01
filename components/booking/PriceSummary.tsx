@@ -10,6 +10,7 @@ interface PriceSummaryProps {
   paymentType: string;
   depositPercentage?: number;
   depositMinAmount?: number;
+  discountAmount?: number;
 }
 
 export function PriceSummary({
@@ -19,8 +20,10 @@ export function PriceSummary({
   paymentType,
   depositPercentage = 30,
   depositMinAmount = 50,
+  discountAmount,
 }: PriceSummaryProps) {
-  const total = pricePerChild * childrenCount;
+  const baseTotal = pricePerChild * childrenCount;
+  const total = discountAmount ? Math.max(0, baseTotal - discountAmount) : baseTotal;
   const deposit = calculateDeposit(total, depositPercentage, depositMinAmount);
   const isOnsite = paymentType.startsWith("onsite");
 
@@ -43,7 +46,19 @@ export function PriceSummary({
           <span className="font-medium">{childrenCount} × {formatPrice(pricePerChild)}</span>
         </div>
 
+        {discountAmount && discountAmount > 0 && (
+          <div className="flex justify-between text-sm text-emerald-400">
+            <span>Code promo</span>
+            <span className="font-semibold">− {formatPrice(discountAmount)}</span>
+          </div>
+        )}
+
         <div className="border-t border-white/20 pt-3">
+          {discountAmount && discountAmount > 0 && (
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-white/50 line-through">{formatPrice(baseTotal)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-base font-bold">
             <span className="text-white">Total</span>
             <span className="text-[#c8f135] text-xl">{formatPrice(total)}</span>

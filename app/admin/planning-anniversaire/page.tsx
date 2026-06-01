@@ -6,7 +6,7 @@ import { formatPrice, getStatusLabel, getStatusColor } from "@/lib/utils";
 import {
   ChevronLeft, ChevronRight, Users, Clock, Loader2, RefreshCw,
   Phone, Mail, CreditCard, X, Plus, Edit2, CheckCircle, AlertTriangle,
-  Calendar, PartyPopper, Euro, Save,
+  Calendar, PartyPopper, Euro, Save, CalendarDays, Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ interface Reservation {
   childrenCount: number; paymentType: string; notes?: string; adminNotes?: string;
   formula: { id: string; name: string; category: string; pricePerChild: number } | null;
   timeSlot: { id: string; time: string } | null;
+  promoCode?: { code: string; label: string; discountType: string; discountValue: number } | null;
 }
 
 interface Formula { id: string; name: string; category: string; pricePerChild: number; minChildren: number; }
@@ -72,6 +73,34 @@ function ReservationModal({
   const [amountPaid, setAmountPaid] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState("");
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(r.date.slice(0, 10));
+  const [rescheduleSlotId, setRescheduleSlotId] = useState("");
+  const [timeSlotsOpts, setTimeSlotsOpts] = useState<TimeSlotOpt[]>([]);
+  const [rescheduling, setRescheduling] = useState(false);
+
+  async function loadTimeSlots() {
+    if (timeSlotsOpts.length > 0) return;
+    const res = await fetch("/api/timeslots");
+    if (res.ok) setTimeSlotsOpts(await res.json());
+  }
+
+  async function doReschedule() {
+    if (!rescheduleDate) return;
+    setRescheduling(true);
+    await fetch("/api/admin/reservations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({
+        id: r.id, action: "reschedule",
+        newDate: rescheduleDate,
+        newTimeSlotId: rescheduleSlotId || undefined,
+      }),
+    });
+    setRescheduling(false);
+    setShowReschedule(false);
+    onUpdated(); onClose();
+  }
 
   async function doAction(action: string, extra?: Record<string, unknown>) {
     setActionLoading(action);
@@ -242,6 +271,23 @@ function ReservationModal({
             </div>
           </div>
 
+          {/* Promo code */}
+          {r.promoCode && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+              <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span className="font-bold text-emerald-800">{r.promoCode.code}</span>
+                <span className="text-emerald-700"> — {r.promoCode.label}</span>
+                <span className="ml-2 text-emerald-600 font-semibold">
+                  -{r.promoCode.discountType === "percent" ? `${r.promoCode.discountValue}%` : formatPrice(r.promoCode.discountValue)}
+                </span>
+                {r.discountAmount > 0 && (
+                  <span className="ml-1 text-emerald-500 text-xs">(−{formatPrice(r.discountAmount)})</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Contact */}
           <div className="space-y-2 text-sm">
             <a href={`tel:${r.clientPhone}`} className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-700 transition-colors">
@@ -284,6 +330,51 @@ function ReservationModal({
               </p>
             )}
           </div>
+
+          {/* Reschedule */}
+          {r.status === "confirmed" && (
+            <div className="pt-2 border-t border-gray-100">
+              {!showReschedule ? (
+                <button onClick={() => { setShowReschedule(true); loadTimeSlots(); }}
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                  <CalendarDays className="w-4 h-4" /> Décaler ce créneau
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5" /> Nouveau créneau
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Nouvelle date</label>
+                      <Input type="date" value={rescheduleDate} onChange={e => setRescheduleDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Nouveau créneau</label>
+                      <select value={rescheduleSlotId} onChange={e => setRescheduleSlotId(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="">— même horaire —</option>
+                        {timeSlotsOpts.map(s => (
+                          <option key={s.id} value={s.id}>{s.time}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowReschedule(false)}
+                      className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">
+                      Annuler
+                    </button>
+                    <button onClick={doReschedule} disabled={rescheduling}
+                      className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {rescheduling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}
+                      {rescheduling ? "Envoi..." : "Valider + Email"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Status actions */}
           {r.status !== "cancelled" && (

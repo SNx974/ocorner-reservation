@@ -155,31 +155,35 @@ function SuccessContent() {
             )}
           </div>
 
-          {/* Share link */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Share2 className="w-4 h-4 text-emerald-600" />
-              <p className="font-semibold text-emerald-800 text-sm">Lien de partage équipe</p>
+          {/* Share link — only for deposit bookings */}
+          {isDeposit && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5">
+              <div className="flex items-center gap-2 mb-1">
+                <Share2 className="w-4 h-4 text-emerald-600" />
+                <p className="font-semibold text-emerald-800 text-sm">Lien de partage équipe</p>
+              </div>
+              <p className="text-xs text-emerald-700 mb-3">Envoyez ce lien à vos coéquipiers pour qu'ils paient leur part</p>
+              <div className="flex gap-2">
+                <input readOnly value={shareLink}
+                  className="flex-1 text-xs bg-white border border-emerald-200 rounded-lg px-3 py-2 text-gray-700 truncate" />
+                <button type="button" onClick={copyShareLink}
+                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1 whitespace-nowrap">
+                  {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Copié !" : "Copier"}
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-emerald-700 mb-3">Envoyez ce lien à vos coéquipiers pour qu'ils paient leur part</p>
-            <div className="flex gap-2">
-              <input readOnly value={shareLink}
-                className="flex-1 text-xs bg-white border border-emerald-200 rounded-lg px-3 py-2 text-gray-700 truncate" />
-              <button type="button" onClick={copyShareLink}
-                className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors flex items-center gap-1 whitespace-nowrap">
-                {copied ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? "Copié !" : "Copier"}
-              </button>
-            </div>
-          </div>
+          )}
 
           <div className="flex gap-3">
-            <Link href="/futsal" className="flex-1">
+            <Link href="/futsal" className={isDeposit ? "flex-1" : "w-full"}>
               <Button variant="outline" className="w-full">Retour Foot à 5</Button>
             </Link>
-            <Link href={`/partage/${reservation.shareToken}`} className="flex-1">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">Voir mon groupe</Button>
-            </Link>
+            {isDeposit && (
+              <Link href={`/partage/${reservation.shareToken}`} className="flex-1">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">Voir mon groupe</Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

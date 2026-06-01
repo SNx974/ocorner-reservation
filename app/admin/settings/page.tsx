@@ -241,6 +241,48 @@ export default function SettingsPage() {
             ))}
           </Section>
 
+          {/* Futsal pricing */}
+          <Section title="Tarification Futsal" icon={Clock}>
+            <p className="text-sm text-gray-500 mb-4">
+              Définissez deux niveaux de prix selon l'heure du créneau (heures creuses vs heures de pointe).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Prix heures creuses (€) <span className="text-gray-400 font-normal">avant l'heure de pointe</span>
+                </label>
+                <Input type="number" min="0"
+                  value={settings.futsal_price_offpeak ?? "90"}
+                  onChange={e => setSettings(s => ({ ...s, futsal_price_offpeak: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Prix heures de pointe (€)
+                </label>
+                <Input type="number" min="0"
+                  value={settings.futsal_price_peak ?? "110"}
+                  onChange={e => setSettings(s => ({ ...s, futsal_price_peak: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Heure de début pointe <span className="text-gray-400 font-normal">(ex: 17 = à partir de 17h)</span>
+                </label>
+                <Input type="number" min="10" max="22"
+                  value={settings.futsal_price_peak_from ?? "17"}
+                  onChange={e => setSettings(s => ({ ...s, futsal_price_peak_from: e.target.value }))} />
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-xl text-sm text-blue-700">
+              <strong>Exemple :</strong> heures creuses 90€ / pointe 110€ à partir de 17h<br/>
+              → 10h–16h30 : <strong>90€</strong> · 17h–22h : <strong>110€</strong>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={saveSettings} disabled={loading}>
+                <Save className="w-4 h-4 mr-2" /> Sauvegarder
+              </Button>
+            </div>
+          </Section>
+
           {/* Time slots */}
           <Section title="Créneaux horaires" icon={Clock}>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">

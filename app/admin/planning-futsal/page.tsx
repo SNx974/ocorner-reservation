@@ -6,7 +6,7 @@ import { formatPrice, getStatusLabel } from "@/lib/utils";
 import {
   ChevronLeft, ChevronRight, Users, Loader2, RefreshCw,
   Trophy, Phone, Mail, X, Plus, Trash2, CreditCard, Banknote,
-  CheckCircle, Clock, Calendar,
+  CheckCircle, Clock, Calendar, CalendarDays, Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +21,12 @@ interface FutsalRes {
   clientEmail: string; date: string; status: string; totalPrice: number;
   playerCount: number; courtNumber: number; paymentType: string;
   depositAmount: number; depositPaid: boolean; fullPaymentPaid: boolean;
+  discountAmount?: number; basePrice?: number;
   notes?: string; adminNotes?: string; type?: string;
   formula?: { name: string; category: string } | null;
   futsalTimeSlot: { hour: number; minute: number };
   timeSlot?: { time: string } | null;
+  promoCode?: { code: string; label: string; discountType: string; discountValue: number } | null;
   participants: Array<{ id: string; name: string; amountDue: number; isPaid: boolean }>;
 }
 
@@ -48,6 +50,11 @@ function FutsalModal({
   const [payAction, setPayAction] = useState<"deposit" | "full" | null>(null);
   const [payMethod, setPayMethod] = useState<"cb" | "especes">("especes");
   const [saving, setSaving] = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(r.date.slice(0, 10));
+  const [rescheduleFutsalSlotId, setRescheduleFutsalSlotId] = useState("");
+  const [futsalSlotsForReschedule, setFutsalSlotsForReschedule] = useState<FutsalSlot[]>([]);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const isBdayFoot = r.type === "birthday";
   const cfg = courtConfig[(r.courtNumber ?? 1) - 1] ?? courtConfig[0];
@@ -78,6 +85,29 @@ function FutsalModal({
   }
 
   const isCancellable = r.status === "cancelled" || r.status === "expired";
+
+  async function doReschedule() {
+    if (!rescheduleDate) return;
+    setRescheduling(true);
+    await fetch("/api/admin/reservations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({
+        id: r.id, action: "reschedule",
+        newDate: rescheduleDate,
+        newFutsalTimeSlotId: rescheduleFutsalSlotId || undefined,
+      }),
+    });
+    setRescheduling(false);
+    setShowReschedule(false);
+    onRefresh(); onClose();
+  }
+
+  async function loadSlotsForDate(date: string) {
+    const res = await fetch(`/api/admin/futsal-slots`, { headers: { "x-admin-token": token } });
+    if (res.ok) setFutsalSlotsForReschedule(await res.json());
+    setRescheduleDate(date);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
@@ -202,6 +232,23 @@ function FutsalModal({
             </div>
           )}
 
+          {/* Promo code */}
+          {r.promoCode && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+              <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span className="font-bold text-emerald-800">{r.promoCode.code}</span>
+                <span className="text-emerald-700"> — {r.promoCode.label}</span>
+                <span className="ml-2 text-emerald-600 font-semibold">
+                  -{r.promoCode.discountType === "percent" ? `${r.promoCode.discountValue}%` : formatPrice(r.promoCode.discountValue)}
+                </span>
+                {(r.discountAmount ?? 0) > 0 && (
+                  <span className="ml-1 text-emerald-500 text-xs">(−{formatPrice(r.discountAmount ?? 0)})</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Contact */}
           <div className="space-y-2 text-sm">
             <a href={`tel:${r.clientPhone}`} className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
@@ -246,6 +293,54 @@ function FutsalModal({
           {r.fullPaymentPaid && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm font-semibold">
               <CheckCircle className="w-4 h-4" /> Paiement complet enregistré
+            </div>
+          )}
+
+          {/* Reschedule */}
+          {r.status === "confirmed" && !isBdayFoot && (
+            <div className="pt-2 border-t border-gray-100">
+              {!showReschedule ? (
+                <button onClick={() => { setShowReschedule(true); loadSlotsForDate(r.date.slice(0, 10)); }}
+                  className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                  <CalendarDays className="w-4 h-4" /> Décaler ce créneau
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase flex items-center gap-1.5">
+                    <CalendarDays className="w-3.5 h-3.5" /> Nouveau créneau
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Nouvelle date</label>
+                      <Input type="date" value={rescheduleDate}
+                        onChange={e => loadSlotsForDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Nouveau créneau</label>
+                      <select value={rescheduleFutsalSlotId} onChange={e => setRescheduleFutsalSlotId(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">— même heure —</option>
+                        {futsalSlotsForReschedule.filter(s => s.isActive).map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.hour}h{s.minute > 0 ? String(s.minute).padStart(2,"0") : "00"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowReschedule(false)}
+                      className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">
+                      Annuler
+                    </button>
+                    <button onClick={doReschedule} disabled={rescheduling}
+                      className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {rescheduling ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}
+                      {rescheduling ? "Envoi..." : "Valider + Email"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -457,11 +552,28 @@ export default function FutsalPlanningPage() {
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    const [futsalRes, slotsRes] = await Promise.all([
+    const [futsalRes, slotsRes, bdayRes] = await Promise.all([
       fetch(`/api/admin/reservations?limit=500&type=futsal`, { headers: { "x-admin-token": token } }).then(r => r.json()),
       fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }).then(r => r.json()),
+      fetch(`/api/admin/reservations?limit=500&type=birthday`, { headers: { "x-admin-token": token } }).then(r => r.json()),
     ]);
-    setReservations(futsalRes.reservations ?? []);
+
+    // Birthday+foot reservations: map timeSlot → futsalTimeSlot for display
+    function parseSlotStart(time: string): { hour: number; minute: number } {
+      const match = time?.match(/^(\d{1,2}):(\d{2})/);
+      return match ? { hour: parseInt(match[1]), minute: parseInt(match[2]) } : { hour: 9, minute: 0 };
+    }
+    const bdayFoot: FutsalRes[] = ((bdayRes.reservations ?? []) as FutsalRes[])
+      .filter(r => r.formula?.category === "marmaille_foot" || r.formula?.category === "foot")
+      .filter(r => r.timeSlot)
+      .map(r => ({
+        ...r,
+        courtNumber: 1,
+        playerCount: r.playerCount ?? (r as unknown as { childrenCount?: number }).childrenCount ?? 0,
+        futsalTimeSlot: parseSlotStart(r.timeSlot?.time ?? ""),
+      }));
+
+    setReservations([...(futsalRes.reservations ?? []), ...bdayFoot]);
     setFutsalSlots(slotsRes.filter((s: FutsalSlot) => s.isActive));
     setLoading(false);
   }, [token]);

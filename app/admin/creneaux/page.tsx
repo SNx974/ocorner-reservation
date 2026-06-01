@@ -19,18 +19,28 @@ export default function CreneauxPage() {
   const [adding, setAdding] = useState(false);
   const [futsalMode, setFutsalMode] = useState<"hour" | "half" | "both">("hour");
   const [regenerating, setRegenerating] = useState(false);
+  const [peakHour, setPeakHour] = useState(17);
+  const [offpeakPrice, setOffpeakPrice] = useState(90);
+  const [peakPrice, setPeakPrice] = useState(110);
 
   const headers = { "Content-Type": "application/json", "x-admin-token": token ?? "" };
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    const [bRes, fRes] = await Promise.all([
+    const [bRes, fRes, sRes] = await Promise.all([
       fetch("/api/admin/timeslots", { headers: { "x-admin-token": token } }),
       fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }),
+      fetch("/api/admin/settings", { headers: { "x-admin-token": token } }),
     ]);
     if (bRes.ok) setBdaySlots(await bRes.json());
     if (fRes.ok) setFutsalSlots(await fRes.json());
+    if (sRes.ok) {
+      const s = await sRes.json();
+      if (s.futsal_price_peak_from) setPeakHour(parseInt(s.futsal_price_peak_from));
+      if (s.futsal_price_offpeak) setOffpeakPrice(parseFloat(s.futsal_price_offpeak));
+      if (s.futsal_price_peak) setPeakPrice(parseFloat(s.futsal_price_peak));
+    }
     setLoading(false);
   }, [token]);
 
@@ -162,9 +172,9 @@ export default function CreneauxPage() {
                 ))}
               </div>
               <div className="text-xs text-blue-600 mb-3">
-                {futsalMode === "hour" && "→ 10h00, 11h00, 12h00 … 21h00"}
+                {futsalMode === "hour" && "→ 10h00, 11h00, 12h00 … 22h00"}
                 {futsalMode === "half" && "→ 10h30, 11h30, 12h30 … 21h30"}
-                {futsalMode === "both" && "→ 10h00, 10h30, 11h00, 11h30 … 21h00, 21h30"}
+                {futsalMode === "both" && "→ 10h00, 10h30, 11h00, 11h30 … 22h00, 21h30"}
               </div>
               <Button
                 onClick={regenerateFutsal}
@@ -177,25 +187,46 @@ export default function CreneauxPage() {
               </Button>
             </div>
 
-            {/* Slot grid */}
+            {/* Pricing legend */}
+            <div className="flex flex-wrap gap-3 mb-3 text-xs font-medium">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200">
+                🕐 Heures creuses (avant {peakHour}h) — <strong>{offpeakPrice}€</strong>
+              </span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-100 text-orange-700 border border-orange-200">
+                🕐 Heures de pointe (≥ {peakHour}h) — <strong>{peakPrice}€</strong>
+              </span>
+            </div>
+
+          {/* Slot grid */}
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-              {futsalSlots.map(s => (
-                <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
-                  className={cn(
-                    "py-3 rounded-xl text-sm font-bold border-2 transition-all",
-                    s.isActive
-                      ? "border-blue-500 bg-blue-500 text-white"
-                      : "border-gray-200 bg-gray-50 text-gray-400"
-                  )}>
-                  {s.hour}h{s.minute > 0 ? String(s.minute).padStart(2, "0") : "00"}
-                </button>
-              ))}
+              {futsalSlots.map(s => {
+                const isPeak = s.hour >= peakHour;
+                return (
+                  <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
+                    className={cn(
+                      "py-2.5 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-0.5",
+                      s.isActive
+                        ? isPeak
+                          ? "border-orange-500 bg-orange-500 text-white"
+                          : "border-blue-500 bg-blue-500 text-white"
+                        : "border-gray-200 bg-gray-50 text-gray-400"
+                    )}>
+                    <span>{s.hour}h{s.minute > 0 ? String(s.minute).padStart(2, "0") : "00"}</span>
+                    {s.isActive && (
+                      <span className="text-[9px] font-semibold opacity-80">
+                        {isPeak ? peakPrice : offpeakPrice}€
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
               {futsalSlots.length === 0 && (
                 <p className="col-span-6 text-center text-gray-400 py-4 text-sm">Aucun créneau — utilisez le bouton ci-dessus pour en générer</p>
               )}
             </div>
             <p className="text-xs text-gray-400 mt-3">
               Cliquez sur un créneau pour l&apos;activer / désactiver. Les créneaux désactivés n&apos;apparaissent pas sur le site.
+              Pour modifier les prix, allez dans <strong>Paramètres → Tarification Futsal</strong>.
             </p>
           </div>
         </div>

@@ -5,7 +5,16 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const settings = await prisma.settings.findMany({
-    where: { key: { in: ["futsal_court_price", "futsal_price_per_player", "futsal_min_players", "futsal_max_courts", "futsal_deposit_percentage", "futsal_deposit_min_amount"] } },
+    where: {
+      key: {
+        in: [
+          "futsal_court_price", "futsal_price_per_player",
+          "futsal_min_players", "futsal_max_courts",
+          "futsal_deposit_percentage", "futsal_deposit_min_amount",
+          "futsal_price_offpeak", "futsal_price_peak", "futsal_price_peak_from",
+        ]
+      }
+    },
   });
   const map: Record<string, string> = {};
   for (const s of settings) map[s.key] = s.value;

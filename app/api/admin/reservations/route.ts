@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isExpired } from "@/lib/utils";
-import { sendCancellationEmail } from "@/lib/email";
+import { sendCancellationEmail, sendRescheduleEmail } from "@/lib/email";
 
 function checkAdminAuth(req: NextRequest): boolean {
   return checkAuth(req.headers.get("x-admin-token")).valid;
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   const [reservations, total] = await Promise.all([
     prisma.reservation.findMany({
       where,
-      include: { formula: true, timeSlot: true, futsalTimeSlot: true, participants: true },
+      include: { formula: true, timeSlot: true, futsalTimeSlot: true, participants: true, promoCode: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -102,7 +102,13 @@ export async function POST(req: NextRequest) {
   if (body.type === "futsal") {
     const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, date, playerCount, notes, amountPaid, paymentMethod } = body;
     const settings = await prisma.settings.findMany();
-    const courtPrice = parseFloat(settings.find(s => s.key === "futsal_court_price")?.value ?? "110");
+    const getSetting = (key: string, fallback: string) => settings.find(s => s.key === key)?.value ?? fallback;
+    const slotForPrice = futsalTimeSlotId ? await prisma.futsalTimeSlot.findUnique({ where: { id: futsalTimeSlotId } }) : null;
+    const slotHour = slotForPrice?.hour ?? 10;
+    const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
+    const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
+    const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));
+    const courtPrice = slotHour >= peakHour ? peakPrice : offpeakPrice;
     const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : courtPrice;
     const fullPaymentPaid = paid >= courtPrice;
     const depositPaid = paid > 0;
@@ -197,6 +203,42 @@ export async function PATCH(req: NextRequest) {
     case "add_note":
       updateData = { adminNotes: notes };
       break;
+    case "reschedule": {
+      const { newDate, newTimeSlotId, newFutsalTimeSlotId } = body;
+      const oldDate = reservation.date;
+      const fts = reservation.futsalTimeSlot as { hour?: number; minute?: number } | null;
+      const oldTime = reservation.timeSlot?.time
+        ?? (fts ? `${fts.hour ?? 0}h${(fts.minute ?? 0) > 0 ? String(fts.minute).padStart(2,"0") : "00"}` : "");
+      updateData = {
+        date: new Date(newDate),
+        ...(newTimeSlotId ? { timeSlotId: newTimeSlotId } : {}),
+        ...(newFutsalTimeSlotId ? { futsalTimeSlotId: newFutsalTimeSlotId } : {}),
+      };
+      // Look up new slot label
+      let newTime = "";
+      if (newTimeSlotId) {
+        const ts = await prisma.timeSlot.findUnique({ where: { id: newTimeSlotId } });
+        newTime = ts?.time ?? "";
+      } else if (newFutsalTimeSlotId) {
+        const fs = await prisma.futsalTimeSlot.findUnique({ where: { id: newFutsalTimeSlotId } }) as { hour?: number; minute?: number } | null;
+        newTime = fs ? `${fs.hour ?? 0}h${(fs.minute ?? 0) > 0 ? String(fs.minute).padStart(2,"0") : "00"}` : "";
+      } else {
+        newTime = oldTime; // date change only, same time
+      }
+      sendRescheduleEmail({
+        clientName: reservation.clientName,
+        clientEmail: reservation.clientEmail,
+        reference: reservation.reference,
+        formulaName: reservation.formula?.name ?? "Foot à 5",
+        isBirthday: reservation.type === "birthday",
+        oldDate,
+        oldTime,
+        newDate: new Date(newDate),
+        newTime,
+        reservationId: reservation.id,
+      }).catch(console.error);
+      break;
+    }
     default:
       return NextResponse.json({ error: "Action inconnue" }, { status: 400 });
   }
@@ -204,7 +246,7 @@ export async function PATCH(req: NextRequest) {
   const updated = await prisma.reservation.update({
     where: { id },
     data: updateData,
-    include: { formula: true, timeSlot: true },
+    include: { formula: true, timeSlot: true, futsalTimeSlot: true, promoCode: true },
   });
 
   return NextResponse.json(updated);

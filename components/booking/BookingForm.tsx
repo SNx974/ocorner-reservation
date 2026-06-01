@@ -10,7 +10,7 @@ import { ConfirmationPage } from "./ConfirmationPage";
 import { MonthCalendar } from "./MonthCalendar";
 import {
   ChevronLeft, ChevronRight, Users, User, Mail, Phone, AlertCircle, Tag, X,
-  CheckCircle, Info,
+  CheckCircle, Info, Loader2,
 } from "lucide-react";
 import { cn, formatPrice, getCategoryLabel } from "@/lib/utils";
 import { format } from "date-fns";
@@ -517,7 +517,8 @@ export function BookingForm() {
             <PriceSummary formulaName={selectedFormula.name}
               pricePerChild={selectedFormula.pricePerChild}
               childrenCount={form.childrenCount}
-              paymentType={form.paymentType} />
+              paymentType={form.paymentType}
+              discountAmount={promoResult?.discountAmount} />
           )}
 
           <div className="flex gap-3">
@@ -584,19 +585,42 @@ export function BookingForm() {
             </div>
           )}
 
-          <PaymentSection
-            formula={selectedFormula}
-            childrenCount={form.childrenCount}
-            paymentType={form.paymentType}
-            depositPaymentMethod={form.depositPaymentMethod}
-            onPaymentTypeChange={(v: "online_full" | "onsite_deposit") => set("paymentType", v)}
-            onDepositMethodChange={v => set("depositPaymentMethod", v)}
-            clientSecret={clientSecret}
-            onPaymentSuccess={() => setConfirmed(true)}
-            reservation={reservationResult}
-            loading={loading}
-            onSubmit={submitReservation}
-          />
+          {/* 100% promo — bypass payment entirely */}
+          {total === 0 && promoResult ? (
+            <div className="space-y-4">
+              <div className="bg-white/10 rounded-2xl p-5 text-center">
+                <div className="w-14 h-14 rounded-full bg-[#1bbfa8]/20 flex items-center justify-center mx-auto mb-3">
+                  <Tag className="w-7 h-7 text-[#1bbfa8]" />
+                </div>
+                <p className="text-xl font-bold text-white mb-1">Réservation gratuite ! 🎉</p>
+                <p className="text-white/60 text-sm">Le code <strong className="text-[#1bbfa8]">{promoResult.code}</strong> couvre 100% du montant.</p>
+                <p className="text-2xl font-extrabold text-[#c8f135] mt-3">0 €</p>
+              </div>
+              {!reservationResult && (
+                <Button size="lg" className="w-full bg-[#1bbfa8] hover:bg-[#1bbfa8]/90 text-white font-bold"
+                  onClick={submitReservation} disabled={loading}>
+                  {loading
+                    ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Confirmation...</>
+                    : <><CheckCircle className="w-5 h-5 mr-2" /> Confirmer gratuitement</>}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <PaymentSection
+              formula={selectedFormula}
+              childrenCount={form.childrenCount}
+              paymentType={form.paymentType}
+              depositPaymentMethod={form.depositPaymentMethod}
+              onPaymentTypeChange={(v: "online_full" | "onsite_deposit") => set("paymentType", v)}
+              onDepositMethodChange={v => set("depositPaymentMethod", v)}
+              clientSecret={clientSecret}
+              onPaymentSuccess={() => setConfirmed(true)}
+              reservation={reservationResult}
+              loading={loading}
+              onSubmit={submitReservation}
+              totalOverride={promoResult ? promoResult.finalTotal : undefined}
+            />
+          )}
 
           {!reservationResult && (
             <div className="mt-4">

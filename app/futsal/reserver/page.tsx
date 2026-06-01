@@ -108,6 +108,9 @@ export default function FutsalReserverPage() {
   const [result, setResult] = useState<{ reservation: Record<string, unknown>; clientSecret?: string; demoMode?: boolean; checkoutUrl?: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [courtPrice, setCourtPrice] = useState(110);
+  const [offpeakPrice, setOffpeakPrice] = useState(90);
+  const [peakPrice, setPeakPrice] = useState(110);
+  const [peakHour, setPeakHour] = useState(17);
   const [minPlayers, setMinPlayers] = useState(10);
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
@@ -119,6 +122,12 @@ export default function FutsalReserverPage() {
     fetch("/api/futsal/settings").then(r => r.json()).then((data: Record<string, string>) => {
       const cp = data.futsal_court_price ?? data.futsal_price_per_player;
       if (cp) setCourtPrice(parseFloat(cp));
+      if (data.futsal_price_offpeak) setOffpeakPrice(parseFloat(data.futsal_price_offpeak));
+      if (data.futsal_price_peak) {
+        setPeakPrice(parseFloat(data.futsal_price_peak));
+        setCourtPrice(parseFloat(data.futsal_price_peak)); // default to peak
+      }
+      if (data.futsal_price_peak_from) setPeakHour(parseInt(data.futsal_price_peak_from));
       if (data.futsal_min_players) setMinPlayers(parseInt(data.futsal_min_players));
     }).catch(() => {});
   }, []);
@@ -133,8 +142,10 @@ export default function FutsalReserverPage() {
   }, [date]);
 
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
-  const pricePerPlayer = courtPrice / playerCount; // Prix par joueur = terrain / nb joueurs
-  const baseTotal = courtPrice; // Le terrain coûte toujours courtPrice, peu importe le nb de joueurs
+  // Time-based pricing
+  const slotBasedPrice = selectedSlot ? (selectedSlot.hour >= peakHour ? peakPrice : offpeakPrice) : courtPrice;
+  const pricePerPlayer = slotBasedPrice / playerCount;
+  const baseTotal = slotBasedPrice;
   const total = promoResult ? promoResult.finalTotal : baseTotal;
   const depositAmount = Math.max(30, total * 0.3);
 
@@ -324,24 +335,32 @@ export default function FutsalReserverPage() {
                     <p className="text-center text-gray-400 py-4">Chargement...</p>
                   ) : (
                     <div className="grid grid-cols-4 gap-2">
-                      {slots.map(slot => (
-                        <button type="button" key={slot.id}
-                          disabled={!slot.available}
-                          onClick={() => { setSelectedSlotId(slot.id); setSelectedCourt(null); }}
-                          className={cn(
-                            "py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
-                            !slot.available ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed" :
-                            selectedSlotId === slot.id ? "border-blue-600 bg-blue-600 text-white" :
-                            "border-gray-200 text-gray-700 hover:border-blue-300"
-                          )}>
-                          {slot.label}
-                          {slot.available && (
-                            <div className="text-[10px] font-normal opacity-70 mt-0.5">
-                              {slot.availableCourts.length} terrain{slot.availableCourts.length > 1 ? "s" : ""}
-                            </div>
-                          )}
-                        </button>
-                      ))}
+                      {slots.map(slot => {
+                        const isPeak = slot.hour >= peakHour;
+                        const slotPrice = isPeak ? peakPrice : offpeakPrice;
+                        return (
+                          <button type="button" key={slot.id}
+                            disabled={!slot.available}
+                            onClick={() => { setSelectedSlotId(slot.id); setSelectedCourt(null); }}
+                            className={cn(
+                              "py-2 rounded-xl text-sm font-semibold border-2 transition-all flex flex-col items-center",
+                              !slot.available ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed" :
+                              selectedSlotId === slot.id ? (isPeak ? "border-orange-500 bg-orange-500 text-white" : "border-blue-600 bg-blue-600 text-white") :
+                              isPeak ? "border-orange-200 text-orange-700 hover:border-orange-400" :
+                              "border-gray-200 text-gray-700 hover:border-blue-300"
+                            )}>
+                            <span>{slot.label}</span>
+                            {slot.available && (
+                              <>
+                                <span className="text-[9px] font-bold opacity-80">{formatPrice(slotPrice)}</span>
+                                <span className="text-[8px] font-normal opacity-60">
+                                  {slot.availableCourts.length} terrain{slot.availableCourts.length > 1 ? "s" : ""}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   {errors.slot && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.slot}</p>}
@@ -506,8 +525,21 @@ export default function FutsalReserverPage() {
                 </div>
               </div>
 
+              {/* 100% promo bypass */}
+              {total === 0 && promoResult && !result && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center space-y-3">
+                  <div className="text-4xl">🎉</div>
+                  <p className="font-bold text-emerald-800">Terrain gratuit avec le code <span className="text-emerald-600">{promoResult.code}</span></p>
+                  <p className="text-2xl font-extrabold text-emerald-700">0 €</p>
+                  <Button type="button" size="lg" className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    onClick={submitReservation} disabled={loading}>
+                    {loading ? "Confirmation..." : "✅ Confirmer gratuitement"}
+                  </Button>
+                </div>
+              )}
+
               {/* Payment options */}
-              {!result && (
+              {!result && total > 0 && (
                 <div className="space-y-2">
                   {[
                     { value: "online_full", label: "💳 Payer la totalité maintenant", sub: `${formatPrice(total)} via Stripe` },
@@ -546,7 +578,7 @@ export default function FutsalReserverPage() {
                 </div>
               )}
 
-              {!result && (
+              {!result && total > 0 && (
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setStep(1)}>
                     <ChevronLeft className="w-4 h-4 mr-1" /> Retour
@@ -554,6 +586,13 @@ export default function FutsalReserverPage() {
                   <Button type="button" size="lg" className="flex-1 bg-blue-600 hover:bg-blue-700"
                     onClick={submitReservation} disabled={loading}>
                     {loading ? "Traitement..." : "Confirmer la réservation"}
+                  </Button>
+                </div>
+              )}
+              {!result && total === 0 && promoResult && (
+                <div className="mt-2">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)} className="w-full">
+                    <ChevronLeft className="w-4 h-4 mr-1" /> Retour
                   </Button>
                 </div>
               )}

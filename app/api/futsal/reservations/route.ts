@@ -74,7 +74,12 @@ export async function POST(req: NextRequest) {
     const getSetting = (key: string, fallback: string) =>
       settings.find((s) => s.key === key)?.value ?? fallback;
 
-    const courtPrice = parseFloat(getSetting("futsal_court_price", getSetting("futsal_price_per_player", "110")));
+    const slotForPricing = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
+    const slotHour = slotForPricing?.hour ?? 10;
+    const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
+    const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
+    const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));
+    const courtPrice = slotHour >= peakHour ? peakPrice : offpeakPrice;
     const minPlayers = parseInt(getSetting("futsal_min_players", "10"));
     const depositPct = parseFloat(getSetting("futsal_deposit_percentage", "30"));
     const depositMin = parseFloat(getSetting("futsal_deposit_min_amount", "30"));

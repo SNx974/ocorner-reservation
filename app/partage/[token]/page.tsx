@@ -25,7 +25,7 @@ interface FutsalTimeSlot {
 interface Reservation {
   id: string; reference: string; clientName: string; clientEmail: string;
   playerCount: number; totalPrice: number; date: string;
-  courtNumber: number; status: string;
+  courtNumber: number; status: string; paymentType: string;
   depositPaid: boolean; fullPaymentPaid: boolean; depositAmount: number;
   futsalTimeSlot: FutsalTimeSlot;
   participants: Participant[];
@@ -126,6 +126,25 @@ export default function PartagePage({ params }: { params: { token: string } }) {
   }
 
   const r = reservation;
+
+  // ── Full payment — no group management needed ─────────────────────────
+  if (r.fullPaymentPaid && r.paymentType !== "onsite_deposit") {
+    return (
+      <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full">
+          <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Terrain entièrement réglé</h2>
+          <p className="text-gray-500 text-sm mt-2">
+            Cette réservation a été payée intégralement par l'organisateur. La gestion de groupe n'est pas nécessaire.
+          </p>
+          <Link href="/futsal"><Button className="mt-5 w-full bg-blue-600 hover:bg-blue-700">Retour Foot à 5</Button></Link>
+        </div>
+      </div>
+    );
+  }
+
   const takenSlots = r.participants.length;
   const totalSlots = r.playerCount;
   const freeSlots = Math.max(0, totalSlots - takenSlots - 1); // -1 for organizer

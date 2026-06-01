@@ -28,6 +28,7 @@ interface PaymentSectionProps {
   reservation: Record<string, unknown> | null;
   loading: boolean;
   onSubmit: () => void;
+  totalOverride?: number; // discounted total after promo
 }
 
 // Real Stripe checkout form
@@ -145,8 +146,10 @@ export function PaymentSection({
   formula, childrenCount, paymentType, depositPaymentMethod,
   onPaymentTypeChange, onDepositMethodChange,
   clientSecret, onPaymentSuccess, reservation, loading, onSubmit,
+  totalOverride,
 }: PaymentSectionProps) {
-  const total = formula.pricePerChild * childrenCount;
+  const baseTotal = formula.pricePerChild * childrenCount;
+  const total = totalOverride !== undefined ? totalOverride : baseTotal;
   const deposit = calculateDeposit(total, 30, 50);
 
   const options = [
@@ -182,6 +185,7 @@ export function PaymentSection({
         pricePerChild={formula.pricePerChild}
         childrenCount={childrenCount}
         paymentType={paymentType}
+        discountAmount={totalOverride !== undefined ? (formula.pricePerChild * childrenCount - totalOverride) : undefined}
       />
 
       {/* Payment type selector — only show if no reservation yet */}
