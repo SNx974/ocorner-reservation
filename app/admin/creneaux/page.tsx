@@ -72,9 +72,9 @@ export default function CreneauxPage() {
   }
 
   async function regenerateFutsal() {
-    if (!confirm(`Régénérer tous les créneaux futsal en mode "${futsalMode === "hour" ? "heures pleines" : futsalMode === "half" ? "demi-heures" : "les deux"}" ?\nLes créneaux non liés à une réservation seront supprimés.`)) return;
+    if (!confirm(`Régénérer tous les créneaux futsal (heures pleines + demi-heures, 10h à 22h30) ?\nLes créneaux non liés à une réservation seront supprimés.`)) return;
     setRegenerating(true);
-    const res = await fetch("/api/admin/futsal-slots", { method: "POST", headers, body: JSON.stringify({ mode: futsalMode }) });
+    const res = await fetch("/api/admin/futsal-slots", { method: "POST", headers, body: JSON.stringify({ mode: "both" }) });
     if (res.ok) setFutsalSlots(await res.json());
     setRegenerating(false);
   }
