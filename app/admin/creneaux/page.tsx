@@ -146,88 +146,115 @@ export default function CreneauxPage() {
 
           {/* Futsal */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-              <Trophy className="w-5 h-5 text-blue-600" /> ⚽ Créneaux Futsal (10h – 22h)
-            </h2>
-            <p className="text-gray-500 text-sm mb-4">Activez/désactivez chaque créneau ou régénérez-les selon le mode choisi</p>
-
-            {/* Mode selector + regenerate */}
-            <div className="bg-blue-50 rounded-xl p-4 mb-5">
-              <p className="text-sm font-semibold text-blue-800 mb-3">Régénérer les créneaux</p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {(["hour", "half", "both"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setFutsalMode(m)}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-all",
-                      futsalMode === m
-                        ? "border-blue-600 bg-blue-600 text-white"
-                        : "border-blue-200 bg-white text-blue-700 hover:border-blue-400"
-                    )}
-                  >
-                    {m === "hour" ? "🕐 Heures pleines" : m === "half" ? "🕠 Demi-heures (+30min)" : "🕐🕠 Les deux"}
-                  </button>
-                ))}
-              </div>
-              <div className="text-xs text-blue-600 mb-3">
-                {futsalMode === "hour" && "→ 10h00, 11h00, 12h00 … 22h00"}
-                {futsalMode === "half" && "→ 10h30, 11h30, 12h30 … 21h30"}
-                {futsalMode === "both" && "→ 10h00, 10h30, 11h00, 11h30 … 22h00, 21h30"}
-              </div>
-              <Button
+            <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-blue-600" /> ⚽ Créneaux Futsal
+              </h2>
+              {/* Discreet reinit button */}
+              <button
+                type="button"
                 onClick={regenerateFutsal}
                 disabled={regenerating}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                title="Réinitialiser tous les créneaux (heures pleines + demi-heures)"
               >
-                {regenerating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
-                Régénérer les créneaux
-              </Button>
+                {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Réinitialiser
+              </button>
             </div>
+            <p className="text-gray-400 text-xs mb-4">Cliquez sur un créneau pour l&apos;activer / désactiver.</p>
 
             {/* Pricing legend */}
-            <div className="flex flex-wrap gap-3 mb-3 text-xs font-medium">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200">
-                🕐 Heures creuses (avant {peakHour}h) — <strong>{offpeakPrice}€</strong>
+            <div className="flex flex-wrap gap-2 mb-4 text-xs font-medium">
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                Heures creuses (&lt;{peakHour}h) — <strong>{offpeakPrice}€</strong>
               </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-100 text-orange-700 border border-orange-200">
-                🕐 Heures de pointe (≥ {peakHour}h) — <strong>{peakPrice}€</strong>
+              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-700 border border-orange-200">
+                Heures de pointe (≥{peakHour}h) — <strong>{peakPrice}€</strong>
               </span>
             </div>
 
-          {/* Slot grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-              {futsalSlots.map(s => {
-                const isPeak = s.hour >= peakHour;
-                return (
-                  <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
-                    className={cn(
-                      "py-2.5 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-0.5",
-                      s.isActive
-                        ? isPeak
-                          ? "border-orange-500 bg-orange-500 text-white"
-                          : "border-blue-500 bg-blue-500 text-white"
-                        : "border-gray-200 bg-gray-50 text-gray-400"
-                    )}>
-                    <span>{s.hour}h{s.minute > 0 ? String(s.minute).padStart(2, "0") : "00"}</span>
-                    {s.isActive && (
-                      <span className="text-[9px] font-semibold opacity-80">
-                        {isPeak ? peakPrice : offpeakPrice}€
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-              {futsalSlots.length === 0 && (
-                <p className="col-span-6 text-center text-gray-400 py-4 text-sm">Aucun créneau — utilisez le bouton ci-dessus pour en générer</p>
-              )}
-            </div>
-            <p className="text-xs text-gray-400 mt-3">
-              Cliquez sur un créneau pour l&apos;activer / désactiver. Les créneaux désactivés n&apos;apparaissent pas sur le site.
-              Pour modifier les prix, allez dans <strong>Paramètres → Tarification Futsal</strong>.
-            </p>
+            {futsalSlots.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                <p>Aucun créneau configuré.</p>
+                <button
+                  type="button" onClick={regenerateFutsal} disabled={regenerating}
+                  className="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                  {regenerating ? "Génération..." : "Générer les créneaux"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Two-column layout */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Column 1 — Heures pleines */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      🕐 Heures pleines
+                    </p>
+                    <div className="space-y-1.5">
+                      {futsalSlots
+                        .filter(s => s.minute === 0)
+                        .map(s => {
+                          const isPeak = s.hour >= peakHour;
+                          return (
+                            <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
+                              className={cn(
+                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all",
+                                s.isActive
+                                  ? isPeak
+                                    ? "border-orange-500 bg-orange-500 text-white"
+                                    : "border-blue-500 bg-blue-500 text-white"
+                                  : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
+                              )}>
+                              <span>{s.hour}h00</span>
+                              <span className="text-xs font-normal opacity-80">
+                                {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+
+                  {/* Column 2 — Demi-heures */}
+                  <div>
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      🕠 Demi-heures
+                    </p>
+                    <div className="space-y-1.5">
+                      {futsalSlots
+                        .filter(s => s.minute === 30)
+                        .map(s => {
+                          const isPeak = s.hour >= peakHour;
+                          return (
+                            <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
+                              className={cn(
+                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all",
+                                s.isActive
+                                  ? isPeak
+                                    ? "border-orange-500 bg-orange-500 text-white"
+                                    : "border-blue-500 bg-blue-500 text-white"
+                                  : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
+                              )}>
+                              <span>{s.hour}h30</span>
+                              <span className="text-xs font-normal opacity-80">
+                                {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      {futsalSlots.filter(s => s.minute === 30).length === 0 && (
+                        <p className="text-xs text-gray-400 italic py-4 text-center">Aucune demi-heure</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-3">
+                  Pour modifier les prix → <strong>Paramètres → Tarification Futsal</strong>
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
