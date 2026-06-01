@@ -25,7 +25,7 @@ interface PromoResult {
 }
 
 // Simple month calendar for futsal
-function FutsalCalendar({ selected, onSelect }: { selected: string; onSelect: (d: string) => void }) {
+function FutsalCalendar({ selected, onSelect, closedDates }: { selected: string; onSelect: (d: string) => void; closedDates: string[] }) {
   const [month, setMonth] = useState(new Date());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -70,13 +70,17 @@ function FutsalCalendar({ selected, onSelect }: { selected: string; onSelect: (d
           d.setHours(0, 0, 0, 0);
           const dateStr = fmt(d);
           const isPast = d < today;
+          const isClosed = closedDates.includes(dateStr);
+          const isDisabled = isPast || isClosed;
           const isSelected = dateStr === selected;
           return (
-            <button type="button" key={i} disabled={isPast}
+            <button type="button" key={i} disabled={isDisabled}
               onClick={() => onSelect(dateStr)}
+              title={isClosed ? "Jour fermé" : undefined}
               className={cn(
                 "h-9 w-full rounded-lg text-sm font-medium transition-all",
                 isPast ? "text-gray-200 cursor-not-allowed" :
+                isClosed ? "bg-red-50 text-red-300 cursor-not-allowed line-through" :
                 isSelected ? "bg-blue-600 text-white" :
                 "text-gray-700 hover:bg-blue-50 hover:text-blue-700"
               )}>
@@ -117,6 +121,13 @@ export default function FutsalReserverPage() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [closedDates, setClosedDates] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/closed-dates?type=futsal").then(r => r.json()).then((data: Array<{ date: string }>) => {
+      setClosedDates(data.map(d => d.date));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/futsal/settings").then(r => r.json()).then((data: Record<string, string>) => {
@@ -322,7 +333,7 @@ export default function FutsalReserverPage() {
                 <Calendar className="w-5 h-5 text-blue-600" /> Date & Créneau
               </h2>
 
-              <FutsalCalendar selected={date} onSelect={d => { setDate(d); setSelectedSlotId(""); setSelectedCourt(null); }} />
+              <FutsalCalendar selected={date} onSelect={d => { setDate(d); setSelectedSlotId(""); setSelectedCourt(null); }} closedDates={closedDates} />
               {errors.date && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.date}</p>}
 
               {date && (

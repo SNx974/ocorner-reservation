@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const data = reservationSchema.parse(body);
 
+    // Check closed dates
+    const bookingDate = new Date(data.date);
+    bookingDate.setUTCHours(0, 0, 0, 0);
+    const closedOnDate = await prisma.closedDate.findFirst({
+      where: { date: bookingDate, OR: [{ type: "all" }, { type: "birthday" }] },
+    });
+    if (closedOnDate) {
+      return NextResponse.json({ error: "Cette date n'est pas disponible à la réservation." }, { status: 400 });
+    }
+
     const formula = await prisma.formula.findUnique({ where: { id: data.formulaId } });
     if (!formula) return NextResponse.json({ error: "Formule introuvable" }, { status: 404 });
 

@@ -141,6 +141,14 @@ model FutsalTimeSlot {
   reservations Reservation[]
 }
 
+model ClosedDate {
+  id        String   @id @default(cuid())
+  date      DateTime // stored as UTC midnight
+  label     String?  // ex: "Événement privé", "Maintenance"
+  type      String   @default("all") // "all" | "birthday" | "futsal"
+  createdAt DateTime @default(now())
+}
+
 model FutsalParticipant {
   id                    String      @id @default(cuid())
   reservationId         String

@@ -74,6 +74,16 @@ export async function POST(req: NextRequest) {
     const getSetting = (key: string, fallback: string) =>
       settings.find((s) => s.key === key)?.value ?? fallback;
 
+    // Check closed dates
+    const bookingDate = new Date(data.date);
+    bookingDate.setUTCHours(0, 0, 0, 0);
+    const closedOnDate = await prisma.closedDate.findFirst({
+      where: { date: bookingDate, OR: [{ type: "all" }, { type: "futsal" }] },
+    });
+    if (closedOnDate) {
+      return NextResponse.json({ error: "Cette date n'est pas disponible à la réservation." }, { status: 400 });
+    }
+
     const slotForPricing = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
     const slotHour = slotForPricing?.hour ?? 10;
     const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));

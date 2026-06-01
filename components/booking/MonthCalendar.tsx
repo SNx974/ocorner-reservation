@@ -30,6 +30,7 @@ interface MonthCalendarProps {
   selectedSlotId: string;
   onSelectDate: (date: string) => void;
   onSelectSlot: (slotId: string) => void;
+  closedDates?: string[]; // "yyyy-MM-dd" list
 }
 
 const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -42,7 +43,7 @@ function getDayColor(available: number, max: number) {
 }
 
 export function MonthCalendar({
-  selectedDate, selectedSlotId, onSelectDate, onSelectSlot,
+  selectedDate, selectedSlotId, onSelectDate, onSelectSlot, closedDates = [],
 }: MonthCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [data, setData] = useState<AvailabilityData | null>(null);
@@ -131,6 +132,7 @@ export function MonthCalendar({
             {days.map((day, idx) => {
               const dayStr = format(day, "yyyy-MM-dd");
               const isPast = isBefore(day, today);
+              const isClosed = closedDates.includes(dayStr);
               const isSelected = selectedDate === dayStr;
               const dayData = data.availability[dayStr];
               const maxPerSlot = data.maxPerSlot;
@@ -140,12 +142,14 @@ export function MonthCalendar({
                 ? "past"
                 : getDayColor(dayData.totalAvailable, maxTotal);
               const isColEnd = (firstDayOfWeek + idx + 1) % 7 === 0;
+              const isDisabled = isPast || isClosed || colorType === "unavailable";
 
               return (
                 <button
                   key={dayStr}
                   type="button"
-                  disabled={isPast || colorType === "unavailable"}
+                  disabled={isDisabled}
+                  title={isClosed ? "Fermé" : undefined}
                   onClick={() => {
                     onSelectDate(dayStr);
                     onSelectSlot(""); // reset slot on date change
@@ -154,21 +158,26 @@ export function MonthCalendar({
                     "relative h-14 flex flex-col items-center justify-center border-b border-white/10 transition-all",
                     !isColEnd && "border-r",
                     isPast && "opacity-30 cursor-not-allowed bg-white/5",
-                    !isPast && colorType === "unavailable" && "bg-white/5 cursor-not-allowed",
-                    !isPast && colorType !== "unavailable" && "hover:bg-white/10 cursor-pointer",
+                    isClosed && !isPast && "bg-red-900/30 cursor-not-allowed",
+                    !isPast && !isClosed && colorType === "unavailable" && "bg-white/5 cursor-not-allowed",
+                    !isPast && !isClosed && colorType !== "unavailable" && "hover:bg-white/10 cursor-pointer",
                     isSelected && "bg-emerald-600 hover:bg-emerald-600 ring-2 ring-inset ring-emerald-400",
                     isToday(day) && !isSelected && "ring-2 ring-inset ring-blue-300"
                   )}
                 >
                   <span className={cn(
                     "text-sm font-semibold",
-                    isSelected ? "text-white" : isPast ? "text-white/30" : "text-white"
+                    isSelected ? "text-white" : isPast ? "text-white/30" : isClosed ? "text-red-400 line-through" : "text-white"
                   )}>
                     {format(day, "d")}
                   </span>
 
+                  {isClosed && !isPast && (
+                    <span className="text-[9px] text-red-400 mt-0.5">fermé</span>
+                  )}
+
                   {/* Availability dots */}
-                  {!isPast && dayData && (
+                  {!isPast && !isClosed && dayData && (
                     <div className="flex gap-0.5 mt-0.5">
                       {colorType === "unavailable" ? (
                         <span className="text-[9px] text-white/40">complet</span>

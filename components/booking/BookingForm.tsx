@@ -153,9 +153,13 @@ export function BookingForm() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [previewFormula, setPreviewFormula] = useState<Formula | null>(null);
+  const [closedDates, setClosedDates] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/formulas").then(r => r.json()).then(setFormulas);
+    fetch("/api/closed-dates?type=birthday").then(r => r.json()).then((data: Array<{ date: string }>) => {
+      setClosedDates(data.map(d => d.date));
+    }).catch(() => {});
   }, []);
 
   const set = (key: keyof typeof INITIAL, value: unknown) => {
@@ -395,6 +399,7 @@ export function BookingForm() {
             selectedSlotId={form.timeSlotId}
             onSelectDate={d => { set("date", d); set("timeSlotId", ""); }}
             onSelectSlot={id => set("timeSlotId", id)}
+            closedDates={closedDates}
           />
 
           {errors.date && (
