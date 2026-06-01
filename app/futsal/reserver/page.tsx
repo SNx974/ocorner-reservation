@@ -24,6 +24,7 @@ interface ScheduleInfo {
   vacationLabel: string | null;
   startHour: number;
   endHour: number;
+  closed?: boolean;
 }
 
 interface PromoResult {
@@ -360,19 +361,28 @@ export default function FutsalReserverPage() {
                   </p>
                   {/* Schedule info badge */}
                   {!slotsLoading && scheduleInfo && (
-                    <div className={cn(
-                      "flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-xl border mb-3",
-                      scheduleInfo.isVacation
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                        : "bg-amber-50 border-amber-200 text-amber-700"
-                    )}>
-                      <span>{scheduleInfo.isVacation ? "🏖️" : "📚"}</span>
-                      <span>
-                        {scheduleInfo.isVacation
-                          ? `Vacances scolaires — créneaux disponibles de ${scheduleInfo.startHour}h à ${scheduleInfo.endHour}h`
-                          : `Hors vacances scolaires — créneaux disponibles de ${scheduleInfo.startHour}h à ${scheduleInfo.endHour}h`}
-                      </span>
-                    </div>
+                    scheduleInfo.closed ? (
+                      <div className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-xl border bg-red-50 border-red-200 text-red-700 mb-3">
+                        <span>🚫</span>
+                        <span>
+                          Le futsal est <strong>fermé</strong> ce jour
+                          {scheduleInfo.isVacation ? " (vacances scolaires)" : " (hors vacances scolaires)"}.
+                        </span>
+                      </div>
+                    ) : (
+                      <div className={cn(
+                        "flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-xl border mb-3",
+                        scheduleInfo.isVacation
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          : "bg-amber-50 border-amber-200 text-amber-700"
+                      )}>
+                        <span>{scheduleInfo.isVacation ? "🏖️" : "📚"}</span>
+                        <span>
+                          {scheduleInfo.isVacation ? "Vacances scolaires" : "Hors vacances scolaires"}
+                          {" "}— ouvert de <strong>{scheduleInfo.startHour}h</strong> à <strong>{scheduleInfo.endHour}h</strong>
+                        </span>
+                      </div>
+                    )
                   )}
 
                   {slotsLoading ? (

@@ -94,13 +94,22 @@ export async function POST(req: NextRequest) {
     const slotForPricing = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
     const slotHour = slotForPricing?.hour ?? 10;
 
-    // Enforce schedule: client cannot book outside allowed hours
-    const schedStartKey = isVacation ? "futsal_hours_vacation_start" : "futsal_hours_offvacation_start";
-    const schedEndKey   = isVacation ? "futsal_hours_vacation_end"   : "futsal_hours_offvacation_end";
-    const schedStart = parseInt(getSetting(schedStartKey, "10"));
-    const schedEnd   = parseInt(getSetting(schedEndKey,   "22"));
-    if (slotHour < schedStart || slotHour > schedEnd) {
-      return NextResponse.json({ error: `Ce créneau n'est pas disponible pour cette période (créneaux disponibles de ${schedStart}h à ${schedEnd}h).` }, { status: 400 });
+    // Enforce per-day schedule
+    const schedKey = isVacation ? "futsal_schedule_vacation" : "futsal_schedule_offvacation";
+    const schedRaw = getSetting(schedKey, "");
+    type DaySched = { open: boolean; start: number; end: number };
+    const defaultSched: Record<number, DaySched> = isVacation
+      ? { 0:{open:true,start:9,end:19},1:{open:true,start:9,end:23},2:{open:true,start:9,end:23},3:{open:true,start:9,end:23},4:{open:true,start:9,end:23},5:{open:true,start:9,end:23},6:{open:true,start:9,end:20} }
+      : { 0:{open:true,start:9,end:19},1:{open:true,start:15,end:23},2:{open:true,start:15,end:23},3:{open:true,start:9,end:23},4:{open:true,start:15,end:23},5:{open:true,start:9,end:23},6:{open:true,start:9,end:20} };
+    let weekSched: Record<number, DaySched> = { ...defaultSched };
+    try { if (schedRaw) weekSched = { ...defaultSched, ...JSON.parse(schedRaw) }; } catch { /* use defaults */ }
+    const dow = new Date(data.date + "T12:00:00Z").getUTCDay();
+    const dayConfig = weekSched[dow] ?? { open: true, start: 10, end: 22 };
+    if (!dayConfig.open) {
+      return NextResponse.json({ error: "Le futsal est fermé ce jour." }, { status: 400 });
+    }
+    if (slotHour < dayConfig.start || slotHour > dayConfig.end) {
+      return NextResponse.json({ error: `Ce créneau n'est pas disponible (ouverture de ${dayConfig.start}h à ${dayConfig.end}h).` }, { status: 400 });
     }
     const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
     const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));

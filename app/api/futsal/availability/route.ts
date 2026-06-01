@@ -37,11 +37,28 @@ export async function GET(req: NextRequest) {
   });
   const isVacation = vacationPeriods.length > 0;
 
-  // Schedule filtering: which hours are open for client booking
-  const schedStartKey = isVacation ? "futsal_hours_vacation_start" : "futsal_hours_offvacation_start";
-  const schedEndKey   = isVacation ? "futsal_hours_vacation_end"   : "futsal_hours_offvacation_end";
-  const schedStart = parseInt(getSetting(schedStartKey, "10"));
-  const schedEnd   = parseInt(getSetting(schedEndKey,   "22"));
+  // Load per-day schedule
+  const schedKey = isVacation ? "futsal_schedule_vacation" : "futsal_schedule_offvacation";
+  const schedRaw = getSetting(schedKey, "");
+  type DaySched = { open: boolean; start: number; end: number };
+  const defaultSched: Record<number, DaySched> = isVacation
+    ? { 0:{open:true,start:9,end:19},1:{open:true,start:9,end:23},2:{open:true,start:9,end:23},3:{open:true,start:9,end:23},4:{open:true,start:9,end:23},5:{open:true,start:9,end:23},6:{open:true,start:9,end:20} }
+    : { 0:{open:true,start:9,end:19},1:{open:true,start:15,end:23},2:{open:true,start:15,end:23},3:{open:true,start:9,end:23},4:{open:true,start:15,end:23},5:{open:true,start:9,end:23},6:{open:true,start:9,end:20} };
+  let weekSched: Record<number, DaySched> = { ...defaultSched };
+  try { if (schedRaw) weekSched = { ...defaultSched, ...JSON.parse(schedRaw) }; } catch { /* use defaults */ }
+
+  const dow = dayDate.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const dayConfig = weekSched[dow] ?? { open: true, start: 10, end: 22 };
+  const schedStart = dayConfig.start;
+  const schedEnd   = dayConfig.end;
+
+  // If day is closed → return empty
+  if (!dayConfig.open) {
+    return NextResponse.json({
+      slots: [],
+      schedule: { isVacation, vacationLabel: isVacation ? vacationPeriods[0]?.label : null, startHour: 0, endHour: 0, closed: true },
+    });
+  }
 
   const slots = await prisma.futsalTimeSlot.findMany({
     where: {
@@ -123,9 +140,10 @@ export async function GET(req: NextRequest) {
     slots: result,
     schedule: {
       isVacation,
-      vacationLabel: isVacation ? vacationPeriods[0].label : null,
+      vacationLabel: isVacation ? vacationPeriods[0]?.label : null,
       startHour: schedStart,
       endHour: schedEnd,
+      closed: false,
     },
   });
 }

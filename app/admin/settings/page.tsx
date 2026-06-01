@@ -5,7 +5,7 @@ import { useAdmin } from "../admin-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice, cn } from "@/lib/utils";
-import { Save, Loader2, CheckCircle, Package, Clock, Settings, AlertTriangle } from "lucide-react";
+import { Save, Loader2, CheckCircle, Package, Clock, Settings, AlertTriangle, ToggleLeft, ToggleRight } from "lucide-react";
 
 interface Formula {
   id: string; name: string; category: string; includes: string;
@@ -13,6 +13,38 @@ interface Formula {
 }
 
 interface TimeSlot { id: string; time: string; isActive: boolean; }
+
+// Day schedule types
+interface DaySchedule { open: boolean; start: number; end: number; }
+type WeekSchedule = Record<number, DaySchedule>; // 0=Sun,1=Mon,...,6=Sat
+
+const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const DAY_SHORT = ["Di", "Lu", "Ma", "Me", "Je", "Ve", "Sa"];
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon→Sun
+
+const DEFAULT_SCHEDULE_VAC: WeekSchedule = {
+  0: { open: true,  start: 9,  end: 19 },
+  1: { open: true,  start: 9,  end: 23 },
+  2: { open: true,  start: 9,  end: 23 },
+  3: { open: true,  start: 9,  end: 23 },
+  4: { open: true,  start: 9,  end: 23 },
+  5: { open: true,  start: 9,  end: 23 },
+  6: { open: true,  start: 9,  end: 20 },
+};
+const DEFAULT_SCHEDULE_OFF: WeekSchedule = {
+  0: { open: true,  start: 9,  end: 19 },
+  1: { open: true,  start: 15, end: 23 },
+  2: { open: true,  start: 15, end: 23 },
+  3: { open: true,  start: 9,  end: 23 },
+  4: { open: true,  start: 15, end: 23 },
+  5: { open: true,  start: 9,  end: 23 },
+  6: { open: true,  start: 9,  end: 20 },
+};
+
+function parseSchedule(raw: string | undefined, defaults: WeekSchedule): WeekSchedule {
+  if (!raw) return { ...defaults };
+  try { return { ...defaults, ...JSON.parse(raw) }; } catch { return { ...defaults }; }
+}
 
 function Section({ title, icon: Icon, children }: {
   title: string; icon: React.ElementType; children: React.ReactNode;
@@ -36,6 +68,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [savingFormula, setSavingFormula] = useState<string | null>(null);
+  const [schedVac, setSchedVac] = useState<WeekSchedule>({ ...DEFAULT_SCHEDULE_VAC });
+  const [schedOff, setSchedOff] = useState<WeekSchedule>({ ...DEFAULT_SCHEDULE_OFF });
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -47,6 +81,8 @@ export default function SettingsPage() {
     setSettings(s);
     setFormulas(f);
     setSlots(t);
+    setSchedVac(parseSchedule(s.futsal_schedule_vacation, DEFAULT_SCHEDULE_VAC));
+    setSchedOff(parseSchedule(s.futsal_schedule_offvacation, DEFAULT_SCHEDULE_OFF));
     setLoading(false);
   }, [token]);
 
@@ -57,7 +93,11 @@ export default function SettingsPage() {
     await fetch("/api/admin/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json", "x-admin-token": token! },
-      body: JSON.stringify(settings),
+      body: JSON.stringify({
+        ...settings,
+        futsal_schedule_vacation: JSON.stringify(schedVac),
+        futsal_schedule_offvacation: JSON.stringify(schedOff),
+      }),
     });
     setLoading(false);
     setSaved(true);
@@ -284,54 +324,67 @@ export default function SettingsPage() {
           </Section>
 
           {/* Futsal schedule by period */}
-          <Section title="Horaires Futsal selon période" icon={Clock}>
+          <Section title="Horaires d'ouverture Futsal" icon={Clock}>
             <p className="text-sm text-gray-500 mb-5">
-              Définissez les plages horaires disponibles pour les réservations clients selon la période.<br/>
+              Définissez les jours et heures d&apos;ouverture du Futsal pour chaque période.<br/>
               <span className="text-gray-400 text-xs">L&apos;admin peut toujours réserver en dehors de ces plages.</span>
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Vacances */}
-              <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
-                <p className="font-bold text-emerald-800 mb-3 flex items-center gap-2">🏖️ Vacances scolaires</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de début</label>
-                    <Input type="number" min="6" max="22"
-                      value={settings.futsal_hours_vacation_start ?? "10"}
-                      onChange={e => setSettings(s => ({ ...s, futsal_hours_vacation_start: e.target.value }))} />
-                    <p className="text-xs text-gray-400 mt-0.5">ex: 10 → à partir de 10h</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de fin</label>
-                    <Input type="number" min="6" max="23"
-                      value={settings.futsal_hours_vacation_end ?? "22"}
-                      onChange={e => setSettings(s => ({ ...s, futsal_hours_vacation_end: e.target.value }))} />
-                    <p className="text-xs text-gray-400 mt-0.5">ex: 22 → jusqu&apos;à 22h</p>
+
+            {(["vacation", "offvacation"] as const).map(period => {
+              const sched = period === "vacation" ? schedVac : schedOff;
+              const setSched = period === "vacation" ? setSchedVac : setSchedOff;
+              const isVac = period === "vacation";
+              return (
+                <div key={period} className={cn("border rounded-2xl p-5 mb-5", isVac ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50")}>
+                  <p className={cn("font-bold mb-4 flex items-center gap-2 text-base", isVac ? "text-emerald-800" : "text-amber-800")}>
+                    {isVac ? "🏖️ Vacances scolaires" : "📚 Hors vacances scolaires"}
+                  </p>
+                  <div className="space-y-2">
+                    {WEEK_ORDER.map(dow => {
+                      const day = sched[dow] ?? DEFAULT_SCHEDULE_VAC[dow];
+                      return (
+                        <div key={dow} className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all",
+                          day.open ? "bg-white border-gray-200" : "bg-gray-50 border-gray-100 opacity-60"
+                        )}>
+                          {/* Day name */}
+                          <span className="w-20 text-sm font-semibold text-gray-700 shrink-0">{DAY_NAMES[dow]}</span>
+
+                          {/* Toggle open/closed */}
+                          <button type="button" onClick={() => setSched(s => ({ ...s, [dow]: { ...s[dow], open: !s[dow].open } }))}
+                            className="shrink-0" title={day.open ? "Fermer" : "Ouvrir"}>
+                            {day.open
+                              ? <ToggleRight className={cn("w-6 h-6", isVac ? "text-emerald-500" : "text-amber-500")} />
+                              : <ToggleLeft className="w-6 h-6 text-gray-400" />}
+                          </button>
+
+                          {day.open ? (
+                            <>
+                              <span className="text-xs text-gray-500 shrink-0">De</span>
+                              <input type="number" min="6" max="22"
+                                value={day.start}
+                                onChange={e => setSched(s => ({ ...s, [dow]: { ...s[dow], start: parseInt(e.target.value) || 9 } }))}
+                                className="w-16 h-8 rounded-lg border border-gray-300 px-2 text-sm text-center focus:ring-2 focus:ring-emerald-500 outline-none bg-white" />
+                              <span className="text-xs text-gray-400">h</span>
+                              <span className="text-xs text-gray-500 shrink-0">à</span>
+                              <input type="number" min="6" max="23"
+                                value={day.end}
+                                onChange={e => setSched(s => ({ ...s, [dow]: { ...s[dow], end: parseInt(e.target.value) || 22 } }))}
+                                className="w-16 h-8 rounded-lg border border-gray-300 px-2 text-sm text-center focus:ring-2 focus:ring-emerald-500 outline-none bg-white" />
+                              <span className="text-xs text-gray-400">h</span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Fermé — pas de réservation disponible</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-              {/* Hors vacances */}
-              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
-                <p className="font-bold text-amber-800 mb-3 flex items-center gap-2">📚 Hors vacances scolaires</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de début</label>
-                    <Input type="number" min="6" max="22"
-                      value={settings.futsal_hours_offvacation_start ?? "15"}
-                      onChange={e => setSettings(s => ({ ...s, futsal_hours_offvacation_start: e.target.value }))} />
-                    <p className="text-xs text-gray-400 mt-0.5">ex: 15 → à partir de 15h</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de fin</label>
-                    <Input type="number" min="6" max="23"
-                      value={settings.futsal_hours_offvacation_end ?? "22"}
-                      onChange={e => setSettings(s => ({ ...s, futsal_hours_offvacation_end: e.target.value }))} />
-                    <p className="text-xs text-gray-400 mt-0.5">ex: 22 → jusqu&apos;à 22h</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
+              );
+            })}
+
+            <div className="flex justify-end">
               <Button onClick={saveSettings} disabled={loading}>
                 <Save className="w-4 h-4 mr-2" /> Sauvegarder
               </Button>
