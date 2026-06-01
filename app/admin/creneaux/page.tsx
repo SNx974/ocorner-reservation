@@ -36,6 +36,7 @@ export default function CreneauxPage() {
   const [peakHour, setPeakHour] = useState(17);
   const [offpeakPrice, setOffpeakPrice] = useState(90);
   const [peakPrice, setPeakPrice] = useState(110);
+  const [slotMode, setSlotMode] = useState<"hour" | "half">("hour");
 
   // Vacation periods
   const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
@@ -112,10 +113,12 @@ export default function CreneauxPage() {
     load();
   }
 
-  async function regenerateFutsal() {
-    if (!confirm(`Régénérer tous les créneaux futsal (heures pleines + demi-heures, 10h à 22h30) ?\nLes créneaux non liés à une réservation seront supprimés.`)) return;
+  async function regenerateFutsal(mode?: "hour" | "half") {
+    const m = mode ?? slotMode;
+    const label = m === "hour" ? "heures pleines (10h00 → 22h00)" : "demi-heures (10h30 → 22h30)";
+    if (!confirm(`Régénérer les créneaux futsal en mode ${label} ?\nLes créneaux non liés à une réservation seront supprimés.`)) return;
     setRegenerating(true);
-    const res = await fetch("/api/admin/futsal-slots", { method: "POST", headers, body: JSON.stringify({ mode: "both" }) });
+    const res = await fetch("/api/admin/futsal-slots", { method: "POST", headers, body: JSON.stringify({ mode: m }) });
     if (res.ok) setFutsalSlots(await res.json());
     setRegenerating(false);
   }
@@ -365,23 +368,50 @@ export default function CreneauxPage() {
 
           {/* ── Futsal ── */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-blue-600" /> ⚽ Créneaux Futsal
               </h2>
               <button
                 type="button"
-                onClick={regenerateFutsal}
+                onClick={() => regenerateFutsal()}
                 disabled={regenerating}
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-600 transition-colors"
-                title="Réinitialiser tous les créneaux (heures pleines + demi-heures)"
+                title="Réinitialiser les créneaux"
               >
                 {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 Réinitialiser
               </button>
             </div>
-            <p className="text-gray-400 text-xs mb-4">Cliquez sur un créneau pour l&apos;activer / désactiver.</p>
 
+            {/* Mode switch */}
+            <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-xl mb-4 w-fit">
+              <button
+                type="button"
+                onClick={() => setSlotMode("hour")}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
+                  slotMode === "hour" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                🕐 Heures pleines
+              </button>
+              <button
+                type="button"
+                onClick={() => setSlotMode("half")}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all",
+                  slotMode === "half" ? "bg-white text-blue-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                🕠 Demi-heures
+              </button>
+            </div>
+
+            <p className="text-gray-400 text-xs mb-3">Cliquez sur un créneau pour l&apos;activer / désactiver.</p>
+
+            {/* Pricing legend */}
             <div className="flex flex-wrap gap-2 mb-4 text-xs font-medium">
               <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
                 Heures creuses (&lt;{peakHour}h) — <strong>{offpeakPrice}€</strong>
@@ -391,84 +421,55 @@ export default function CreneauxPage() {
               </span>
             </div>
 
-            {futsalSlots.length === 0 ? (
-              <div className="text-center py-8 text-gray-400 text-sm">
-                <p>Aucun créneau configuré.</p>
-                <button
-                  type="button" onClick={regenerateFutsal} disabled={regenerating}
-                  className="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
-                  {regenerating ? "Génération..." : "Générer les créneaux"}
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                      🕐 Heures pleines
-                    </p>
-                    <div className="space-y-1.5">
-                      {futsalSlots
-                        .filter(s => s.minute === 0)
-                        .map(s => {
-                          const isPeak = s.hour >= peakHour;
-                          return (
-                            <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
-                              className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all",
-                                s.isActive
-                                  ? isPeak
-                                    ? "border-orange-500 bg-orange-500 text-white"
-                                    : "border-blue-500 bg-blue-500 text-white"
-                                  : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
-                              )}>
-                              <span>{s.hour}h00</span>
-                              <span className="text-xs font-normal opacity-80">
-                                {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
-                              </span>
-                            </button>
-                          );
-                        })}
-                    </div>
+            {/* Slots list */}
+            {(() => {
+              const targetMinute = slotMode === "hour" ? 0 : 30;
+              const visible = futsalSlots.filter(s => s.minute === targetMinute);
+              if (futsalSlots.length === 0 || visible.length === 0) {
+                return (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                    <p>Aucun créneau {slotMode === "hour" ? "heure pleine" : "demi-heure"} configuré.</p>
+                    <button
+                      type="button"
+                      onClick={() => regenerateFutsal(slotMode)}
+                      disabled={regenerating}
+                      className="mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      {regenerating ? "Génération..." : `Générer les ${slotMode === "hour" ? "heures pleines" : "demi-heures"}`}
+                    </button>
                   </div>
-
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                      🕠 Demi-heures
-                    </p>
-                    <div className="space-y-1.5">
-                      {futsalSlots
-                        .filter(s => s.minute === 30)
-                        .map(s => {
-                          const isPeak = s.hour >= peakHour;
-                          return (
-                            <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
-                              className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 rounded-xl border-2 text-sm font-semibold transition-all",
-                                s.isActive
-                                  ? isPeak
-                                    ? "border-orange-500 bg-orange-500 text-white"
-                                    : "border-blue-500 bg-blue-500 text-white"
-                                  : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
-                              )}>
-                              <span>{s.hour}h30</span>
-                              <span className="text-xs font-normal opacity-80">
-                                {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      {futsalSlots.filter(s => s.minute === 30).length === 0 && (
-                        <p className="text-xs text-gray-400 italic py-4 text-center">Aucune demi-heure</p>
-                      )}
-                    </div>
+                );
+              }
+              return (
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {visible.map(s => {
+                      const isPeak = s.hour >= peakHour;
+                      const label = slotMode === "hour" ? `${s.hour}h00` : `${s.hour}h30`;
+                      return (
+                        <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
+                          className={cn(
+                            "flex items-center justify-between px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all",
+                            s.isActive
+                              ? isPeak
+                                ? "border-orange-500 bg-orange-500 text-white"
+                                : "border-blue-500 bg-blue-500 text-white"
+                              : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
+                          )}>
+                          <span>{label}</span>
+                          <span className="text-xs font-normal opacity-80">
+                            {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-                <p className="text-xs text-gray-400 mt-3">
-                  Pour modifier les prix → <strong>Paramètres → Tarification Futsal</strong>
-                </p>
-              </>
-            )}
+                  <p className="text-xs text-gray-400 mt-3">
+                    Pour modifier les prix → <strong>Paramètres → Tarification Futsal</strong>
+                  </p>
+                </>
+              );
+            })()}
           </div>
 
         </div>
