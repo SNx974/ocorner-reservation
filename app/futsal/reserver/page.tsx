@@ -403,8 +403,13 @@ export default function FutsalReserverPage() {
                     +
                   </button>
                   <div>
-                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(courtPrice)}</p>
+                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(slotBasedPrice)}</p>
                     <p className="text-xs text-gray-400">terrain fixe · {formatPrice(pricePerPlayer)}/joueur</p>
+                    {selectedSlot && (
+                      <p className={`text-[10px] font-semibold mt-0.5 ${selectedSlot.hour >= peakHour ? "text-orange-500" : "text-blue-400"}`}>
+                        {selectedSlot.hour >= peakHour ? "🟠 Heure de pointe" : "🔵 Heure creuse"}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {errors.players && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.players}</p>}
