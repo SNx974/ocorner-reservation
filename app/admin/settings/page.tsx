@@ -283,6 +283,61 @@ export default function SettingsPage() {
             </div>
           </Section>
 
+          {/* Futsal schedule by period */}
+          <Section title="Horaires Futsal selon période" icon={Clock}>
+            <p className="text-sm text-gray-500 mb-5">
+              Définissez les plages horaires disponibles pour les réservations clients selon la période.<br/>
+              <span className="text-gray-400 text-xs">L&apos;admin peut toujours réserver en dehors de ces plages.</span>
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Vacances */}
+              <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50">
+                <p className="font-bold text-emerald-800 mb-3 flex items-center gap-2">🏖️ Vacances scolaires</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de début</label>
+                    <Input type="number" min="6" max="22"
+                      value={settings.futsal_hours_vacation_start ?? "10"}
+                      onChange={e => setSettings(s => ({ ...s, futsal_hours_vacation_start: e.target.value }))} />
+                    <p className="text-xs text-gray-400 mt-0.5">ex: 10 → à partir de 10h</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de fin</label>
+                    <Input type="number" min="6" max="23"
+                      value={settings.futsal_hours_vacation_end ?? "22"}
+                      onChange={e => setSettings(s => ({ ...s, futsal_hours_vacation_end: e.target.value }))} />
+                    <p className="text-xs text-gray-400 mt-0.5">ex: 22 → jusqu&apos;à 22h</p>
+                  </div>
+                </div>
+              </div>
+              {/* Hors vacances */}
+              <div className="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                <p className="font-bold text-amber-800 mb-3 flex items-center gap-2">📚 Hors vacances scolaires</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de début</label>
+                    <Input type="number" min="6" max="22"
+                      value={settings.futsal_hours_offvacation_start ?? "15"}
+                      onChange={e => setSettings(s => ({ ...s, futsal_hours_offvacation_start: e.target.value }))} />
+                    <p className="text-xs text-gray-400 mt-0.5">ex: 15 → à partir de 15h</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Heure de fin</label>
+                    <Input type="number" min="6" max="23"
+                      value={settings.futsal_hours_offvacation_end ?? "22"}
+                      onChange={e => setSettings(s => ({ ...s, futsal_hours_offvacation_end: e.target.value }))} />
+                    <p className="text-xs text-gray-400 mt-0.5">ex: 22 → jusqu&apos;à 22h</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={saveSettings} disabled={loading}>
+                <Save className="w-4 h-4 mr-2" /> Sauvegarder
+              </Button>
+            </div>
+          </Section>
+
           {/* Time slots */}
           <Section title="Créneaux horaires" icon={Clock}>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">

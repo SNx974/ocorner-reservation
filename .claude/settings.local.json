@@ -26,7 +26,8 @@
       "Bash(New-Item -Path \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\" -ItemType File -Force)",
       "Bash(Out-Null)",
       "Bash(Get-Content \"C:\\\\Users\\\\SNx97\\\\Documents\\\\Planing\\\\app\\\\api\\\\webhooks\\\\stripe\\\\route.ts\")",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(findstr DATABASE)"
     ]
   }
 }

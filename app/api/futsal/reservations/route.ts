@@ -84,8 +84,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cette date n'est pas disponible à la réservation." }, { status: 400 });
     }
 
+    // Check vacation schedule
+    const dayMid = new Date(data.date + "T12:00:00Z");
+    const vacPeriods = await prisma.vacationPeriod.findMany({
+      where: { startDate: { lte: dayMid }, endDate: { gte: dayMid } },
+    });
+    const isVacation = vacPeriods.length > 0;
+
     const slotForPricing = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
     const slotHour = slotForPricing?.hour ?? 10;
+
+    // Enforce schedule: client cannot book outside allowed hours
+    const schedStartKey = isVacation ? "futsal_hours_vacation_start" : "futsal_hours_offvacation_start";
+    const schedEndKey   = isVacation ? "futsal_hours_vacation_end"   : "futsal_hours_offvacation_end";
+    const schedStart = parseInt(getSetting(schedStartKey, "10"));
+    const schedEnd   = parseInt(getSetting(schedEndKey,   "22"));
+    if (slotHour < schedStart || slotHour > schedEnd) {
+      return NextResponse.json({ error: `Ce créneau n'est pas disponible pour cette période (créneaux disponibles de ${schedStart}h à ${schedEnd}h).` }, { status: 400 });
+    }
     const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
     const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
     const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));

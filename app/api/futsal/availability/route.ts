@@ -30,8 +30,24 @@ export async function GET(req: NextRequest) {
     settings.find((s) => s.key === key)?.value ?? fallback;
   const maxCourts = parseInt(getSetting("futsal_max_courts", "3"));
 
+  // Determine if date is in a vacation period
+  const dayDate = new Date(date + "T12:00:00Z");
+  const vacationPeriods = await prisma.vacationPeriod.findMany({
+    where: { startDate: { lte: dayDate }, endDate: { gte: dayDate } },
+  });
+  const isVacation = vacationPeriods.length > 0;
+
+  // Schedule filtering: which hours are open for client booking
+  const schedStartKey = isVacation ? "futsal_hours_vacation_start" : "futsal_hours_offvacation_start";
+  const schedEndKey   = isVacation ? "futsal_hours_vacation_end"   : "futsal_hours_offvacation_end";
+  const schedStart = parseInt(getSetting(schedStartKey, "10"));
+  const schedEnd   = parseInt(getSetting(schedEndKey,   "22"));
+
   const slots = await prisma.futsalTimeSlot.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      hour: { gte: schedStart, lte: schedEnd },
+    },
     orderBy: [{ hour: "asc" }, { minute: "asc" }],
   });
 
@@ -103,5 +119,13 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json(result);
+  return NextResponse.json({
+    slots: result,
+    schedule: {
+      isVacation,
+      vacationLabel: isVacation ? vacationPeriods[0].label : null,
+      startHour: schedStart,
+      endHour: schedEnd,
+    },
+  });
 }

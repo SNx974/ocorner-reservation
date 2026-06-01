@@ -141,6 +141,14 @@ model FutsalTimeSlot {
   reservations Reservation[]
 }
 
+model VacationPeriod {
+  id        String   @id @default(cuid())
+  label     String   // ex: "Vacances d'été 2025"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+}
+
 model ClosedDate {
   id        String   @id @default(cuid())
   date      DateTime // stored as UTC midnight

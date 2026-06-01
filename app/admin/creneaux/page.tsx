@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useAdmin } from "../admin-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, Plus, Trash2, ToggleLeft, ToggleRight, Trophy, RefreshCw, Loader2, CalendarX, BanIcon } from "lucide-react";
+import { Clock, Plus, Trash2, ToggleLeft, ToggleRight, Trophy, RefreshCw, Loader2, CalendarX, BanIcon, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BdaySlot { id: string; time: string; isActive: boolean; }
 interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean; }
 interface ClosedDate { id: string; date: string; label: string | null; type: string; }
+interface VacationPeriod { id: string; label: string; startDate: string; endDate: string; }
 
 const TYPE_LABELS: Record<string, string> = {
   all: "Tout (anniv + futsal)",
@@ -36,6 +37,13 @@ export default function CreneauxPage() {
   const [offpeakPrice, setOffpeakPrice] = useState(90);
   const [peakPrice, setPeakPrice] = useState(110);
 
+  // Vacation periods
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [newVacLabel, setNewVacLabel] = useState("");
+  const [newVacStart, setNewVacStart] = useState("");
+  const [newVacEnd, setNewVacEnd] = useState("");
+  const [addingVac, setAddingVac] = useState(false);
+
   // Closed date form
   const [newClosedDate, setNewClosedDate] = useState("");
   const [newClosedLabel, setNewClosedLabel] = useState("");
@@ -47,11 +55,12 @@ export default function CreneauxPage() {
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    const [bRes, fRes, sRes, cRes] = await Promise.all([
+    const [bRes, fRes, sRes, cRes, vRes] = await Promise.all([
       fetch("/api/admin/timeslots", { headers: { "x-admin-token": token } }),
       fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }),
       fetch("/api/admin/settings", { headers: { "x-admin-token": token } }),
       fetch("/api/admin/closed-dates", { headers: { "x-admin-token": token } }),
+      fetch("/api/admin/vacation-periods", { headers: { "x-admin-token": token } }),
     ]);
     if (bRes.ok) setBdaySlots(await bRes.json());
     if (fRes.ok) setFutsalSlots(await fRes.json());
@@ -64,6 +73,14 @@ export default function CreneauxPage() {
     if (cRes.ok) {
       const raw: Array<{ id: string; date: string; label: string | null; type: string }> = await cRes.json();
       setClosedDates(raw.map(d => ({ ...d, date: d.date.slice(0, 10) })));
+    }
+    if (vRes.ok) {
+      const raw: VacationPeriod[] = await vRes.json();
+      setVacationPeriods(raw.map(v => ({
+        ...v,
+        startDate: v.startDate.slice(0, 10),
+        endDate: v.endDate.slice(0, 10),
+      })));
     }
     setLoading(false);
   }, [token]);
@@ -117,6 +134,24 @@ export default function CreneauxPage() {
     load();
   }
 
+  async function addVacationPeriod() {
+    if (!newVacLabel.trim() || !newVacStart || !newVacEnd) return;
+    setAddingVac(true);
+    await fetch("/api/admin/vacation-periods", {
+      method: "POST", headers,
+      body: JSON.stringify({ label: newVacLabel, startDate: newVacStart, endDate: newVacEnd }),
+    });
+    setNewVacLabel(""); setNewVacStart(""); setNewVacEnd("");
+    setAddingVac(false);
+    load();
+  }
+
+  async function deleteVacationPeriod(id: string) {
+    if (!confirm("Supprimer cette période ?")) return;
+    await fetch("/api/admin/vacation-periods", { method: "DELETE", headers, body: JSON.stringify({ id }) });
+    load();
+  }
+
   async function deleteClosedDate(id: string) {
     if (!confirm("Retirer ce jour fermé ?")) return;
     await fetch("/api/admin/closed-dates", { method: "DELETE", headers, body: JSON.stringify({ id }) });
@@ -146,6 +181,69 @@ export default function CreneauxPage() {
         <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-emerald-600" /></div>
       ) : (
         <div className="space-y-6">
+
+          {/* ── Périodes de vacances scolaires ── */}
+          <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5">
+            <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-1">
+              <GraduationCap className="w-5 h-5 text-emerald-600" /> 🏖️ Périodes de vacances scolaires
+            </h2>
+            <p className="text-gray-400 text-xs mb-4">
+              Durant ces périodes, les horaires &quot;vacances&quot; s&apos;appliquent pour la réservation futsal côté client.
+              <br/>Configurez les heures dans <strong>Paramètres → Horaires Futsal selon période</strong>.
+            </p>
+
+            {/* Add form */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <Input
+                placeholder="Nom — ex: Vacances d'été 2025"
+                value={newVacLabel}
+                onChange={e => setNewVacLabel(e.target.value)}
+                className="flex-1"
+              />
+              <div className="flex items-center gap-1.5">
+                <input type="date" value={newVacStart} onChange={e => setNewVacStart(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                <span className="text-gray-400 text-xs">→</span>
+                <input type="date" value={newVacEnd} onChange={e => setNewVacEnd(e.target.value)}
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+              </div>
+              <Button
+                onClick={addVacationPeriod}
+                disabled={addingVac || !newVacLabel.trim() || !newVacStart || !newVacEnd}
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {addingVac ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+                Ajouter
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {vacationPeriods.map(v => (
+                <div key={v.id} className="flex items-center justify-between p-3 rounded-xl border border-emerald-100 bg-emerald-50">
+                  <div className="flex items-center gap-3">
+                    <GraduationCap className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">{v.label}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDate(v.startDate)} → {formatDate(v.endDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => deleteVacationPeriod(v.id)}
+                    className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-400 hover:text-red-500 transition-colors"
+                    title="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {vacationPeriods.length === 0 && (
+                <p className="text-center text-gray-400 py-4 text-sm">Aucune période configurée</p>
+              )}
+            </div>
+          </div>
 
           {/* ── Jours fermés ── */}
           <div className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">

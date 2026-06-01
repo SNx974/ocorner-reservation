@@ -15,8 +15,15 @@ import Link from "next/link";
 const STEPS = ["Créneau", "Contact", "Paiement"];
 
 interface FutsalSlot {
-  id: string; hour: number; label: string;
+  id: string; hour: number; minute: number; label: string;
   totalCourts: number; availableCourts: number[]; available: boolean;
+}
+
+interface ScheduleInfo {
+  isVacation: boolean;
+  vacationLabel: string | null;
+  startHour: number;
+  endHour: number;
 }
 
 interface PromoResult {
@@ -122,6 +129,7 @@ export default function FutsalReserverPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [closedDates, setClosedDates] = useState<string[]>([]);
+  const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo | null>(null);
 
   useEffect(() => {
     fetch("/api/closed-dates?type=futsal").then(r => r.json()).then((data: Array<{ date: string }>) => {
@@ -144,11 +152,19 @@ export default function FutsalReserverPage() {
   }, []);
 
   useEffect(() => {
-    if (!date) { setSlots([]); return; }
+    if (!date) { setSlots([]); setScheduleInfo(null); return; }
     setSlotsLoading(true);
     fetch(`/api/futsal/availability?date=${date}`)
       .then(r => r.json())
-      .then(setSlots)
+      .then(data => {
+        if (data.slots) {
+          setSlots(data.slots);
+          setScheduleInfo(data.schedule ?? null);
+        } else {
+          // backward compat if array
+          setSlots(Array.isArray(data) ? data : []);
+        }
+      })
       .finally(() => setSlotsLoading(false));
   }, [date]);
 
@@ -342,6 +358,23 @@ export default function FutsalReserverPage() {
                     <Clock className="w-4 h-4 text-blue-600" />
                     Choisissez un créneau — {format(new Date(date + "T12:00:00"), "d MMMM", { locale: fr })}
                   </p>
+                  {/* Schedule info badge */}
+                  {!slotsLoading && scheduleInfo && (
+                    <div className={cn(
+                      "flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-xl border mb-3",
+                      scheduleInfo.isVacation
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : "bg-amber-50 border-amber-200 text-amber-700"
+                    )}>
+                      <span>{scheduleInfo.isVacation ? "🏖️" : "📚"}</span>
+                      <span>
+                        {scheduleInfo.isVacation
+                          ? `Vacances scolaires — créneaux disponibles de ${scheduleInfo.startHour}h à ${scheduleInfo.endHour}h`
+                          : `Hors vacances scolaires — créneaux disponibles de ${scheduleInfo.startHour}h à ${scheduleInfo.endHour}h`}
+                      </span>
+                    </div>
+                  )}
+
                   {slotsLoading ? (
                     <p className="text-center text-gray-400 py-4">Chargement...</p>
                   ) : (
