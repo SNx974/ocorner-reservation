@@ -121,11 +121,13 @@ export async function POST(req: NextRequest) {
 
     if (!IS_DEMO && needsOnlinePayment) {
       // Real Stripe flow
+      const dateLabel = new Date(data.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      const baseDesc = `${data.clientName} — ${formula.name} — ${dateLabel} — ${reference}`;
       if (data.paymentType === "online_full") {
         const intent = await createStripeIntent(
           totalPrice,
           { reference, type: "full" },
-          `Réservation ${reference} - ${formula.name}`,
+          baseDesc,
           data.clientEmail,
           data.clientName,
         );
@@ -136,7 +138,7 @@ export async function POST(req: NextRequest) {
         const intent = await createStripeIntent(
           depositAmount,
           { reference, type: "deposit" },
-          `Acompte ${reference} - ${formula.name}`,
+          `Acompte — ${baseDesc}`,
           data.clientEmail,
           data.clientName,
         );
