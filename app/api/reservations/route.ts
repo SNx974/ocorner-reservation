@@ -29,14 +29,14 @@ const reservationSchema = z.object({
   discountAmount: z.number().optional(),
 });
 
-async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string) {
-  // Lazy-import stripe only when needed and not in demo mode
+async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string, receiptEmail?: string) {
   const { stripe, formatAmountForStripe } = await import("@/lib/stripe");
   const intent = await stripe.paymentIntents.create({
     amount: formatAmountForStripe(amount),
     currency: "eur",
     metadata,
     description,
+    ...(receiptEmail ? { receipt_email: receiptEmail } : {}),
   });
   return intent;
 }
@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
         const intent = await createStripeIntent(
           totalPrice,
           { reference, type: "full" },
-          `Réservation ${reference} - ${formula.name}`
+          `Réservation ${reference} - ${formula.name}`,
+          data.clientEmail,
         );
         stripePaymentIntentId = intent.id;
         stripeClientSecret = intent.client_secret!;
@@ -129,7 +130,8 @@ export async function POST(req: NextRequest) {
         const intent = await createStripeIntent(
           depositAmount,
           { reference, type: "deposit" },
-          `Acompte ${reference} - ${formula.name}`
+          `Acompte ${reference} - ${formula.name}`,
+          data.clientEmail,
         );
         stripeDepositIntentId = intent.id;
         stripeClientSecret = intent.client_secret!;
