@@ -29,14 +29,19 @@ const reservationSchema = z.object({
   discountAmount: z.number().optional(),
 });
 
-async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string, receiptEmail?: string) {
-  const { stripe, formatAmountForStripe } = await import("@/lib/stripe");
+async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string, clientEmail?: string, clientName?: string) {
+  const { stripe, formatAmountForStripe, getOrCreateStripeCustomer } = await import("@/lib/stripe");
+  let customerId: string | undefined;
+  if (clientEmail) {
+    try { customerId = await getOrCreateStripeCustomer(clientEmail, clientName); } catch { /* silent */ }
+  }
   const intent = await stripe.paymentIntents.create({
     amount: formatAmountForStripe(amount),
     currency: "eur",
     metadata,
     description,
-    ...(receiptEmail ? { receipt_email: receiptEmail } : {}),
+    ...(customerId ? { customer: customerId } : {}),
+    ...(clientEmail && !customerId ? { receipt_email: clientEmail } : {}),
   });
   return intent;
 }
@@ -122,6 +127,7 @@ export async function POST(req: NextRequest) {
           { reference, type: "full" },
           `Réservation ${reference} - ${formula.name}`,
           data.clientEmail,
+          data.clientName,
         );
         stripePaymentIntentId = intent.id;
         stripeClientSecret = intent.client_secret!;
@@ -132,6 +138,7 @@ export async function POST(req: NextRequest) {
           { reference, type: "deposit" },
           `Acompte ${reference} - ${formula.name}`,
           data.clientEmail,
+          data.clientName,
         );
         stripeDepositIntentId = intent.id;
         stripeClientSecret = intent.client_secret!;

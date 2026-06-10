@@ -44,8 +44,13 @@ async function createCheckoutSession(
   metadata: Record<string, string>,
   reference: string,
   baseUrl: string,
+  clientName?: string,
 ) {
-  const { stripe, formatAmountForStripe } = await import("@/lib/stripe");
+  const { stripe, formatAmountForStripe, getOrCreateStripeCustomer } = await import("@/lib/stripe");
+  let customerId: string | undefined;
+  if (metadata.clientEmail) {
+    try { customerId = await getOrCreateStripeCustomer(metadata.clientEmail, clientName); } catch { /* silent */ }
+  }
   return stripe.checkout.sessions.create({
     mode: "payment",
     payment_method_types: ["card"],
@@ -61,7 +66,7 @@ async function createCheckoutSession(
     success_url: `${baseUrl}/futsal/success?reference=${reference}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/futsal/reserver`,
     locale: "fr",
-    customer_email: metadata.clientEmail,
+    ...(customerId ? { customer: customerId } : { customer_email: metadata.clientEmail }),
   });
 }
 
@@ -188,6 +193,7 @@ export async function POST(req: NextRequest) {
         },
         reference,
         baseUrl,
+        data.clientName,
       );
       stripeCheckoutSessionId = session.id;
       // Also store the payment intent ID if available
