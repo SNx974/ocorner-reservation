@@ -178,13 +178,15 @@ export function buildBirthdayEmailHtml(
         <p style="margin:6px 0 0;font-size:12px;color:#d97706;">⚠️ L'acompte doit être versé dans les 72h pour valider votre créneau.</p>
       </div>`;
 
-  const qrBlock = data.qrCode
-    ? `<div style="text-align:center;margin:24px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
-        <p style="margin:0 0 12px;font-size:13px;color:#64748b;font-weight:600;">🎟️ BILLET D'ENTRÉE — Présentez ce QR code à l'accueil</p>
-        <img src="${data.qrCode}" alt="QR Code réservation" style="width:160px;height:160px;border:4px solid #e2e8f0;border-radius:10px;"/>
-        <p style="margin:10px 0 0;font-family:monospace;font-size:16px;font-weight:bold;color:#1e293b;letter-spacing:2px;">${data.reference}</p>
-      </div>`
-    : "";
+  const confirmUrl = `${getPublicUrl()}/ma-reservation/${data.reference}`;
+  const qrBlock = `<div style="text-align:center;margin:24px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+      <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600;">🎟️ BILLET D'ENTRÉE</p>
+      <p style="margin:0 0 14px;font-family:monospace;font-size:18px;font-weight:bold;color:#1e293b;letter-spacing:2px;">${data.reference}</p>
+      <a href="${confirmUrl}" style="display:inline-block;background:#c8f135;color:#0a1628;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+        Voir ma réservation →
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">Présentez cette page ou votre référence à l'accueil</p>
+    </div>`;
 
   const infoBlocksHtml = infoBlocks.length > 0
     ? `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;">
@@ -282,11 +284,14 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
         ${row(isPaid ? "Statut paiement" : "Acompte versé", isPaid ? "✅ Payé" : formatPrice(data.depositAmount))}
       </table>
     </div>
-    ${data.qrCode ? `<div style="text-align:center;margin:20px 0;">
-      <p style="font-size:13px;color:#64748b;font-weight:600;">🎟️ Présentez ce QR code à l'accueil</p>
-      <img src="${data.qrCode}" alt="QR" style="width:150px;height:150px;border:4px solid #e2e8f0;border-radius:10px;"/>
-      <p style="font-family:monospace;font-size:16px;font-weight:bold;letter-spacing:2px;">${data.reference}</p>
-    </div>` : ""}
+    <div style="text-align:center;margin:20px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+      <p style="margin:0 0 8px;font-size:13px;color:#64748b;font-weight:600;">🎟️ BILLET D'ENTRÉE</p>
+      <p style="margin:0 0 14px;font-family:monospace;font-size:18px;font-weight:bold;color:#1e293b;letter-spacing:2px;">${data.reference}</p>
+      <a href="${getPublicUrl()}/ma-reservation/${data.reference}" style="display:inline-block;background:#1bbfa8;color:#ffffff;font-weight:700;font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
+        Voir ma réservation →
+      </a>
+      <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">Présentez cette page ou votre référence à l'accueil</p>
+    </div>
     ${tip ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 20px;margin:16px 0;">
       <p style="margin:0;font-size:14px;color:#1d4ed8;font-weight:600;">💡 Bon à savoir</p>
       <p style="margin:8px 0 0;font-size:13px;color:#1e40af;">${tip}</p>
