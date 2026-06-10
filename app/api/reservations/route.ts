@@ -197,6 +197,7 @@ export async function POST(req: NextRequest) {
       paymentType: data.paymentType,
       status,
       qrCode,
+      isBirthday: true,
     }).catch(console.error);
 
     return NextResponse.json({

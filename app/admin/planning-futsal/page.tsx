@@ -563,8 +563,9 @@ export default function FutsalPlanningPage() {
       const match = time?.match(/^(\d{1,2}):(\d{2})/);
       return match ? { hour: parseInt(match[1]), minute: parseInt(match[2]) } : { hour: 9, minute: 0 };
     }
+    const FOOT_CATEGORIES = ["marmaille_foot", "foot"];
     const bdayFoot: FutsalRes[] = ((bdayRes.reservations ?? []) as FutsalRes[])
-      .filter(r => r.formula?.category === "marmaille_foot" || r.formula?.category === "foot")
+      .filter(r => FOOT_CATEGORIES.includes(r.formula?.category ?? "") || r.formula?.name?.toLowerCase().includes("foot"))
       .filter(r => r.timeSlot)
       .map(r => ({
         ...r,
