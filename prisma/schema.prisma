@@ -65,8 +65,11 @@ model Reservation {
   // Futsal fields
   futsalTimeSlotId String?
   futsalTimeSlot   FutsalTimeSlot? @relation(fields: [futsalTimeSlotId], references: [id])
-  courtNumber      Int?        // 1, 2 or 3
+  courtNumber      Int?        // 1, 2 or 3 (first slot of the cart, kept for backward-compat)
   playerCount      Int?        // min 10
+
+  // Futsal cart: multiple (slot + court) lines per reservation
+  futsalSlots      FutsalReservationSlot[]
 
   date            DateTime
   totalPrice      Float
@@ -139,6 +142,19 @@ model FutsalTimeSlot {
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   reservations Reservation[]
+  reservationSlots FutsalReservationSlot[]
+}
+
+model FutsalReservationSlot {
+  id               String         @id @default(cuid())
+  reservationId    String
+  reservation      Reservation    @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  futsalTimeSlotId String
+  futsalTimeSlot   FutsalTimeSlot @relation(fields: [futsalTimeSlotId], references: [id])
+  courtNumber      Int
+  createdAt        DateTime       @default(now())
+
+  @@unique([reservationId, futsalTimeSlotId, courtNumber])
 }
 
 model VacationPeriod {

@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   const [reservations, total] = await Promise.all([
     prisma.reservation.findMany({
       where,
-      include: { formula: true, timeSlot: true, futsalTimeSlot: true, participants: true, promoCode: true },
+      include: { formula: true, timeSlot: true, futsalTimeSlot: true, futsalSlots: { include: { futsalTimeSlot: true } }, participants: true, promoCode: true },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,

@@ -15,6 +15,11 @@ interface Reservation {
   paymentType: string; depositPaid: boolean; fullPaymentPaid: boolean;
   depositAmount: number; shareToken: string;
   futsalTimeSlot: { hour: number; minute: number };
+  futsalSlots?: Array<{ courtNumber: number; futsalTimeSlot: { hour: number; minute: number } }>;
+}
+
+function fmtSlot(hour: number, minute: number) {
+  return `${hour}h${minute > 0 ? String(minute).padStart(2, "0") : "00"}`;
 }
 
 function SuccessContent() {
@@ -85,7 +90,10 @@ function SuccessContent() {
     );
   }
 
-  const slotLabel = `${reservation.futsalTimeSlot.hour}h${reservation.futsalTimeSlot.minute > 0 ? String(reservation.futsalTimeSlot.minute).padStart(2, "0") : "00"}`;
+  const cartSlots = reservation.futsalSlots && reservation.futsalSlots.length > 0
+    ? [...reservation.futsalSlots].sort((a, b) => a.futsalTimeSlot.hour - b.futsalTimeSlot.hour || a.futsalTimeSlot.minute - b.futsalTimeSlot.minute || a.courtNumber - b.courtNumber)
+    : [{ courtNumber: reservation.courtNumber, futsalTimeSlot: reservation.futsalTimeSlot }];
+  const slotsLabel = cartSlots.map(s => `${fmtSlot(s.futsalTimeSlot.hour, s.futsalTimeSlot.minute)} T${s.courtNumber}`).join(", ");
   const shareLink = `${typeof window !== "undefined" ? window.location.origin : ""}/partage/${reservation.shareToken}`;
   const isDeposit = reservation.paymentType === "onsite_deposit";
   const remaining = reservation.totalPrice - reservation.depositAmount;
@@ -119,13 +127,9 @@ function SuccessContent() {
               <span className="text-gray-500">Date</span>
               <span className="font-semibold capitalize">{format(new Date(reservation.date), "EEEE d MMMM yyyy", { locale: fr })}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Créneau</span>
-              <span className="font-semibold">{slotLabel}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Terrain</span>
-              <span className="font-semibold">N°{reservation.courtNumber}</span>
+            <div className="flex justify-between gap-3">
+              <span className="text-gray-500 shrink-0">Créneaux</span>
+              <span className="font-semibold text-right">{slotsLabel}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Joueurs</span>

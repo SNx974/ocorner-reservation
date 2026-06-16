@@ -542,6 +542,33 @@ export function BookingForm() {
         <div className="animate-fade-in">
           <h2 className="text-2xl font-bold text-white mb-4">Mode de paiement</h2>
 
+          {/* 🛒 Récapitulatif panier */}
+          <div className="rounded-2xl border border-white/15 bg-white/5 p-4 mb-4">
+            <p className="text-sm font-bold text-[#c8f135] mb-2 flex items-center gap-1.5">🛒 Votre panier</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-white/50 shrink-0">Formule</span>
+                <span className="font-semibold text-white text-right">{selectedFormula.name}</span>
+              </div>
+              {form.date && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/50 shrink-0">Date</span>
+                  <span className="font-semibold text-white text-right capitalize">
+                    {format(new Date(form.date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between gap-3">
+                <span className="text-white/50 shrink-0">Enfants</span>
+                <span className="font-semibold text-white">{form.childrenCount}</span>
+              </div>
+              <div className="flex justify-between gap-3 border-t border-white/10 pt-1.5">
+                <span className="text-white/70 font-semibold">Total</span>
+                <span className="text-lg font-extrabold text-[#c8f135]">{formatPrice(total)}</span>
+              </div>
+            </div>
+          </div>
+
           {/* Promo code */}
           {!reservationResult && (
             <div className="bg-white/10 rounded-2xl p-4 mb-4">

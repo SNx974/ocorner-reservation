@@ -71,14 +71,18 @@ export async function GET(req: NextRequest) {
   const start = new Date(date + "T00:00:00");
   const end = new Date(date + "T23:59:59");
 
-  // 1. Futsal reservations
+  // 1. Futsal reservations (with cart slots)
   const futsalReservations = await prisma.reservation.findMany({
     where: {
       type: "futsal",
       date: { gte: start, lte: end },
       status: { notIn: ["cancelled", "expired"] },
     },
-    select: { futsalTimeSlotId: true, courtNumber: true },
+    select: {
+      futsalTimeSlotId: true,
+      courtNumber: true,
+      futsalSlots: { select: { futsalTimeSlotId: true, courtNumber: true } },
+    },
   });
 
   // 2. Birthday+foot reservations (marmaille_foot or foot category) → block a court
@@ -96,6 +100,15 @@ export async function GET(req: NextRequest) {
   const bookedPerSlot: Record<string, number[]> = {};
 
   for (const r of futsalReservations) {
+    // New cart-based reservations: read every (slot, court) line
+    if (r.futsalSlots && r.futsalSlots.length > 0) {
+      for (const s of r.futsalSlots) {
+        if (!bookedPerSlot[s.futsalTimeSlotId]) bookedPerSlot[s.futsalTimeSlotId] = [];
+        bookedPerSlot[s.futsalTimeSlotId].push(s.courtNumber);
+      }
+      continue;
+    }
+    // Legacy single-slot reservations
     if (!r.futsalTimeSlotId) continue;
     if (!bookedPerSlot[r.futsalTimeSlotId]) bookedPerSlot[r.futsalTimeSlotId] = [];
     if (r.courtNumber) bookedPerSlot[r.futsalTimeSlotId].push(r.courtNumber);

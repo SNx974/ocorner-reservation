@@ -25,6 +25,7 @@ interface FutsalRes {
   notes?: string; adminNotes?: string; type?: string;
   formula?: { name: string; category: string } | null;
   futsalTimeSlot: { hour: number; minute: number };
+  futsalSlots?: Array<{ courtNumber: number; futsalTimeSlot: { hour: number; minute: number } }>;
   timeSlot?: { time: string } | null;
   promoCode?: { code: string; label: string; discountType: string; discountValue: number } | null;
   participants: Array<{ id: string; name: string; amountDue: number; isPaid: boolean }>;
@@ -574,7 +575,19 @@ export default function FutsalPlanningPage() {
         futsalTimeSlot: parseSlotStart(r.timeSlot?.time ?? ""),
       }));
 
-    setReservations([...(futsalRes.reservations ?? []), ...bdayFoot]);
+    // Expand cart reservations: one grid entry per (slot + court) line
+    const expandedFutsal: FutsalRes[] = [];
+    for (const r of (futsalRes.reservations ?? []) as FutsalRes[]) {
+      if (r.futsalSlots && r.futsalSlots.length > 0) {
+        for (const s of r.futsalSlots) {
+          expandedFutsal.push({ ...r, courtNumber: s.courtNumber, futsalTimeSlot: { hour: s.futsalTimeSlot.hour, minute: s.futsalTimeSlot.minute } });
+        }
+      } else {
+        expandedFutsal.push(r);
+      }
+    }
+
+    setReservations([...expandedFutsal, ...bdayFoot]);
     setFutsalSlots(slotsRes.filter((s: FutsalSlot) => s.isActive));
     setLoading(false);
   }, [token]);
@@ -606,11 +619,15 @@ export default function FutsalPlanningPage() {
     return format(d, "yyyy-MM-dd");
   });
 
-  // Count reservations per day for week strip
+  // Count reservations per day for week strip (dedupe expanded cart entries by reference)
   const dayCount: Record<string, number> = {};
+  const countedPerDay: Record<string, Set<string>> = {};
   for (const r of reservations) {
     if (r.status === "cancelled" || r.status === "expired") continue;
     const d = r.date.slice(0, 10);
+    if (!countedPerDay[d]) countedPerDay[d] = new Set();
+    if (countedPerDay[d].has(r.reference)) continue;
+    countedPerDay[d].add(r.reference);
     dayCount[d] = (dayCount[d] ?? 0) + 1;
   }
 

@@ -17,12 +17,19 @@ const IS_DEMO =
   STRIPE_KEY === "sk_test_..." ||
   (!STRIPE_KEY.startsWith("sk_live_") && !STRIPE_KEY.startsWith("sk_test_") && !STRIPE_KEY.startsWith("rk_"));
 
+const cartSlotSchema = z.object({
+  futsalTimeSlotId: z.string(),
+  courtNumber: z.number().int().min(1).max(3),
+});
+
 const schema = z.object({
   clientName: z.string().min(2),
   clientEmail: z.string().email(),
   clientPhone: z.string().min(8),
-  futsalTimeSlotId: z.string(),
-  courtNumber: z.number().int().min(1).max(3),
+  // Cart of (slot + court) lines — multiple allowed. Legacy single fields kept for compat.
+  slots: z.array(cartSlotSchema).min(1).optional(),
+  futsalTimeSlotId: z.string().optional(),
+  courtNumber: z.number().int().min(1).max(3).optional(),
   date: z.string(),
   playerCount: z.number().int().min(10),
   paymentType: z.enum(["online_full", "onsite_deposit"]),
@@ -96,8 +103,30 @@ export async function POST(req: NextRequest) {
     });
     const isVacation = vacPeriods.length > 0;
 
-    const slotForPricing = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
-    const slotHour = slotForPricing?.hour ?? 10;
+    // Normalize the cart (multi-slot) — accept `slots` array or legacy single slot
+    const cart = (data.slots && data.slots.length > 0)
+      ? data.slots
+      : (data.futsalTimeSlotId && data.courtNumber
+          ? [{ futsalTimeSlotId: data.futsalTimeSlotId, courtNumber: data.courtNumber }]
+          : []);
+    if (cart.length === 0) {
+      return NextResponse.json({ error: "Aucun créneau sélectionné" }, { status: 400 });
+    }
+    // Reject internal duplicates (same slot + court twice)
+    const seenKeys = new Set<string>();
+    for (const c of cart) {
+      const k = `${c.futsalTimeSlotId}:${c.courtNumber}`;
+      if (seenKeys.has(k)) return NextResponse.json({ error: "Créneau en double dans le panier" }, { status: 400 });
+      seenKeys.add(k);
+    }
+
+    // Load all selected slots
+    const slotIds = Array.from(new Set(cart.map(c => c.futsalTimeSlotId)));
+    const slotRecords = await prisma.futsalTimeSlot.findMany({ where: { id: { in: slotIds } } });
+    const slotById = new Map(slotRecords.map(s => [s.id, s]));
+    for (const c of cart) {
+      if (!slotById.has(c.futsalTimeSlotId)) return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
+    }
 
     // Enforce per-day schedule
     const schedKey = isVacation ? "futsal_schedule_vacation" : "futsal_schedule_offvacation";
@@ -113,13 +142,10 @@ export async function POST(req: NextRequest) {
     if (!dayConfig.open) {
       return NextResponse.json({ error: "Le futsal est fermé ce jour." }, { status: 400 });
     }
-    if (slotHour < dayConfig.start || slotHour > dayConfig.end) {
-      return NextResponse.json({ error: `Ce créneau n'est pas disponible (ouverture de ${dayConfig.start}h à ${dayConfig.end}h).` }, { status: 400 });
-    }
+
     const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
     const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
     const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));
-    const courtPrice = slotHour >= peakHour ? peakPrice : offpeakPrice;
     const minPlayers = parseInt(getSetting("futsal_min_players", "10"));
     const depositPct = parseFloat(getSetting("futsal_deposit_percentage", "30"));
     const depositMin = parseFloat(getSetting("futsal_deposit_min_amount", "30"));
@@ -129,26 +155,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Minimum ${minPlayers} joueurs requis` }, { status: 400 });
     }
 
-    const slot = await prisma.futsalTimeSlot.findUnique({ where: { id: data.futsalTimeSlotId } });
-    if (!slot) return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
+    // Validate each slot against the day schedule + compute base price (sum of slots)
+    let basePrice = 0;
+    for (const c of cart) {
+      const s = slotById.get(c.futsalTimeSlotId)!;
+      if (s.hour < dayConfig.start || s.hour > dayConfig.end) {
+        return NextResponse.json({ error: `Le créneau ${s.hour}h n'est pas disponible (ouverture de ${dayConfig.start}h à ${dayConfig.end}h).` }, { status: 400 });
+      }
+      basePrice += s.hour >= peakHour ? peakPrice : offpeakPrice;
+    }
 
-    // Check court availability
+    // Check court availability across all selected slots (legacy + cart rows)
     const start = new Date(data.date + "T00:00:00");
     const end = new Date(data.date + "T23:59:59");
-    const existing = await prisma.reservation.findFirst({
+    const existingRes = await prisma.reservation.findMany({
       where: {
         type: "futsal",
-        futsalTimeSlotId: data.futsalTimeSlotId,
-        courtNumber: data.courtNumber,
         date: { gte: start, lte: end },
         status: { notIn: ["cancelled", "expired"] },
       },
+      select: {
+        futsalTimeSlotId: true, courtNumber: true,
+        futsalSlots: { select: { futsalTimeSlotId: true, courtNumber: true } },
+      },
     });
-    if (existing) {
-      return NextResponse.json({ error: "Ce terrain est déjà réservé pour ce créneau" }, { status: 409 });
+    const bookedKeys = new Set<string>();
+    for (const r of existingRes) {
+      if (r.futsalSlots.length > 0) {
+        for (const s of r.futsalSlots) bookedKeys.add(`${s.futsalTimeSlotId}:${s.courtNumber}`);
+      } else if (r.futsalTimeSlotId && r.courtNumber) {
+        bookedKeys.add(`${r.futsalTimeSlotId}:${r.courtNumber}`);
+      }
+    }
+    for (const c of cart) {
+      if (bookedKeys.has(`${c.futsalTimeSlotId}:${c.courtNumber}`)) {
+        const s = slotById.get(c.futsalTimeSlotId)!;
+        return NextResponse.json({ error: `Le terrain ${c.courtNumber} est déjà réservé à ${s.hour}h` }, { status: 409 });
+      }
     }
 
-    const basePrice = courtPrice;
+    // Human-readable labels for Stripe + email
+    const sortedCart = cart
+      .map(c => ({ court: c.courtNumber, slot: slotById.get(c.futsalTimeSlotId)! }))
+      .sort((a, b) => a.slot.hour - b.slot.hour || a.slot.minute - b.slot.minute || a.court - b.court);
+    const slotsLabel = sortedCart
+      .map(c => `${c.slot.hour}h${c.slot.minute > 0 ? String(c.slot.minute).padStart(2, "0") : "00"} T${c.court}`)
+      .join(", ");
+    const courtsList = Array.from(new Set(cart.map(c => c.courtNumber))).sort((a, b) => a - b).join(", ");
     let appliedDiscount = 0;
     let validatedPromoId: string | undefined;
 
@@ -178,10 +231,9 @@ export async function POST(req: NextRequest) {
       status = "confirmed";
     } else if (!IS_DEMO) {
       // Real Stripe: create Checkout Session
-      const slotLabel = `${slot.hour}h${slot.minute > 0 ? String(slot.minute).padStart(2, "0") : "00"}`;
-      const description = data.paymentType === "online_full"
-        ? `Terrain ${data.courtNumber} – Futsal ${slotLabel} – ${data.playerCount} joueurs`
-        : `Acompte Terrain ${data.courtNumber} – Futsal ${slotLabel}`;
+      const description = (data.paymentType === "online_full"
+        ? `Futsal ${slotsLabel} – ${data.playerCount} joueurs`
+        : `Acompte Futsal ${slotsLabel}`).slice(0, 240);
       const amountToPay = data.paymentType === "online_full" ? totalPrice : depositAmount;
       const session = await createCheckoutSession(
         amountToPay,
@@ -214,8 +266,8 @@ export async function POST(req: NextRequest) {
         clientName: data.clientName,
         clientEmail: data.clientEmail,
         clientPhone: data.clientPhone,
-        futsalTimeSlotId: data.futsalTimeSlotId,
-        courtNumber: data.courtNumber,
+        futsalTimeSlotId: cart[0].futsalTimeSlotId,
+        courtNumber: cart[0].courtNumber,
         playerCount: data.playerCount,
         date: new Date(data.date),
         basePrice,
@@ -233,8 +285,11 @@ export async function POST(req: NextRequest) {
         expiresAt,
         notes: data.notes,
         shareToken,
+        futsalSlots: {
+          create: cart.map(c => ({ futsalTimeSlotId: c.futsalTimeSlotId, courtNumber: c.courtNumber })),
+        },
       },
-      include: { futsalTimeSlot: true },
+      include: { futsalTimeSlot: true, futsalSlots: { include: { futsalTimeSlot: true } } },
     });
 
     if (validatedPromoId) {
@@ -249,9 +304,9 @@ export async function POST(req: NextRequest) {
       clientName: reservation.clientName,
       clientEmail: reservation.clientEmail,
       reference,
-      formulaName: `Futsal — Terrain ${data.courtNumber} — ${data.playerCount} joueurs`,
+      formulaName: `Futsal — Terrain ${courtsList} — ${data.playerCount} joueurs`,
       date: reservation.date,
-      time: `${slot.hour}h${slot.minute > 0 ? String(slot.minute).padStart(2, "0") : "00"}`,
+      time: slotsLabel,
       childrenCount: data.playerCount,
       totalPrice,
       depositAmount,
@@ -286,7 +341,7 @@ export async function GET(req: NextRequest) {
   if (reference) {
     const r = await prisma.reservation.findUnique({
       where: { reference },
-      include: { futsalTimeSlot: true, participants: true },
+      include: { futsalTimeSlot: true, futsalSlots: { include: { futsalTimeSlot: true } }, participants: true },
     });
     if (!r) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
     return NextResponse.json(r);
@@ -295,7 +350,7 @@ export async function GET(req: NextRequest) {
   if (shareToken) {
     const r = await prisma.reservation.findUnique({
       where: { shareToken },
-      include: { futsalTimeSlot: true, participants: { orderBy: { createdAt: "asc" } } },
+      include: { futsalTimeSlot: true, futsalSlots: { include: { futsalTimeSlot: true } }, participants: { orderBy: { createdAt: "asc" } } },
     });
     if (!r) return NextResponse.json({ error: "Lien invalide" }, { status: 404 });
     return NextResponse.json(r);

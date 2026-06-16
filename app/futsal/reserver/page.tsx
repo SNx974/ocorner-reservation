@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ChevronLeft, ChevronRight, Users, Mail, Phone, AlertCircle,
-  Calendar, Clock, Trophy, Tag, X, Share2, Copy, CheckCircle,
+  Calendar, Clock, Tag, X, Share2, Copy, CheckCircle,
 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { format } from "date-fns";
@@ -17,6 +17,10 @@ const STEPS = ["Créneau", "Contact", "Paiement"];
 interface FutsalSlot {
   id: string; hour: number; minute: number; label: string;
   totalCourts: number; availableCourts: number[]; available: boolean;
+}
+
+interface CartItem {
+  slotId: string; court: number; hour: number; minute: number; label: string; price: number;
 }
 
 interface ScheduleInfo {
@@ -106,8 +110,7 @@ export default function FutsalReserverPage() {
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<FutsalSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [selectedSlotId, setSelectedSlotId] = useState("");
-  const [selectedCourt, setSelectedCourt] = useState<number | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [playerCount, setPlayerCount] = useState(10);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -169,13 +172,25 @@ export default function FutsalReserverPage() {
       .finally(() => setSlotsLoading(false));
   }, [date]);
 
-  const selectedSlot = slots.find(s => s.id === selectedSlotId);
-  // Time-based pricing
-  const slotBasedPrice = selectedSlot ? (selectedSlot.hour >= peakHour ? peakPrice : offpeakPrice) : courtPrice;
-  const pricePerPlayer = slotBasedPrice / playerCount;
-  const baseTotal = slotBasedPrice;
+  // Time-based pricing per slot
+  const slotUnitPrice = (hour: number) => (hour >= peakHour ? peakPrice : offpeakPrice);
+  const baseTotal = cart.reduce((sum, it) => sum + it.price, 0);
   const total = promoResult ? promoResult.finalTotal : baseTotal;
+  const pricePerPlayer = playerCount > 0 ? total / playerCount : 0;
   const depositAmount = Math.max(30, total * 0.3);
+  const sortedCart = [...cart].sort((a, b) => a.hour - b.hour || a.minute - b.minute || a.court - b.court);
+  const inCart = (slotId: string, court: number) => cart.some(i => i.slotId === slotId && i.court === court);
+
+  function toggleCartItem(slot: FutsalSlot, court: number) {
+    setCart(prev => {
+      const exists = prev.some(i => i.slotId === slot.id && i.court === court);
+      if (exists) return prev.filter(i => !(i.slotId === slot.id && i.court === court));
+      return [...prev, { slotId: slot.id, court, hour: slot.hour, minute: slot.minute, label: slot.label, price: slotUnitPrice(slot.hour) }];
+    });
+  }
+  function removeCartItem(slotId: string, court: number) {
+    setCart(prev => prev.filter(i => !(i.slotId === slotId && i.court === court)));
+  }
 
   async function validatePromo() {
     if (!promoCode.trim()) return;
@@ -198,8 +213,7 @@ export default function FutsalReserverPage() {
     const e: Record<string, string> = {};
     if (step === 0) {
       if (!date) e.date = "Choisissez une date";
-      if (!selectedSlotId) e.slot = "Choisissez un créneau";
-      if (!selectedCourt) e.court = "Choisissez un terrain";
+      if (cart.length === 0) e.slot = "Ajoutez au moins un créneau au panier";
       if (playerCount < minPlayers) e.players = `Minimum ${minPlayers} joueurs`;
     }
     if (step === 1) {
@@ -219,8 +233,9 @@ export default function FutsalReserverPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientName: clientName.trim(), clientEmail: clientEmail.trim(),
-          clientPhone: clientPhone.trim(), futsalTimeSlotId: selectedSlotId,
-          courtNumber: selectedCourt, date, playerCount: Number(playerCount),
+          clientPhone: clientPhone.trim(),
+          slots: cart.map(i => ({ futsalTimeSlotId: i.slotId, courtNumber: i.court })),
+          date, playerCount: Number(playerCount),
           paymentType, notes: notes.trim() || undefined,
           promoCodeId: promoResult?.promoCodeId,
           discountAmount: promoResult?.discountAmount,
@@ -282,8 +297,7 @@ export default function FutsalReserverPage() {
 
             <div className="bg-blue-50 rounded-2xl p-4 text-left space-y-2 text-sm mb-6">
               <div className="flex justify-between"><span className="text-gray-500">Date</span><span className="font-semibold">{date && format(new Date(date + "T12:00:00"), "d MMMM yyyy", { locale: fr })}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Créneau</span><span className="font-semibold">{selectedSlot?.label}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">Terrain</span><span className="font-semibold">N°{selectedCourt}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-gray-500 shrink-0">Créneaux</span><span className="font-semibold text-right">{sortedCart.map(i => `${i.label} · T${i.court}`).join(" — ")}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Joueurs</span><span className="font-semibold">{playerCount}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Total</span><span className="font-bold text-blue-700">{formatPrice(total)}</span></div>
             </div>
@@ -350,7 +364,7 @@ export default function FutsalReserverPage() {
                 <Calendar className="w-5 h-5 text-blue-600" /> Date & Créneau
               </h2>
 
-              <FutsalCalendar selected={date} onSelect={d => { setDate(d); setSelectedSlotId(""); setSelectedCourt(null); }} closedDates={closedDates} />
+              <FutsalCalendar selected={date} onSelect={d => { setDate(d); setCart([]); }} closedDates={closedDates} />
               {errors.date && <p className="text-red-500 text-sm flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.date}</p>}
 
               {date && (
@@ -385,34 +399,48 @@ export default function FutsalReserverPage() {
                     )
                   )}
 
+                  <p className="text-xs text-gray-400 mb-2">Cliquez sur un terrain pour l'ajouter au panier. Vous pouvez en sélectionner plusieurs.</p>
                   {slotsLoading ? (
                     <p className="text-center text-gray-400 py-4">Chargement...</p>
                   ) : (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="space-y-1.5">
                       {slots.map(slot => {
                         const isPeak = slot.hour >= peakHour;
                         const slotPrice = isPeak ? peakPrice : offpeakPrice;
                         return (
-                          <button type="button" key={slot.id}
-                            disabled={!slot.available}
-                            onClick={() => { setSelectedSlotId(slot.id); setSelectedCourt(null); }}
+                          <div key={slot.id}
                             className={cn(
-                              "py-2 rounded-xl text-sm font-semibold border-2 transition-all flex flex-col items-center",
-                              !slot.available ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed" :
-                              selectedSlotId === slot.id ? (isPeak ? "border-orange-500 bg-orange-500 text-white" : "border-blue-600 bg-blue-600 text-white") :
-                              isPeak ? "border-orange-200 text-orange-700 hover:border-orange-400" :
-                              "border-gray-200 text-gray-700 hover:border-blue-300"
+                              "flex items-center gap-2 rounded-xl border-2 px-3 py-2",
+                              !slot.available ? "border-gray-100 bg-gray-50 opacity-60" :
+                              isPeak ? "border-orange-100" : "border-gray-100"
                             )}>
-                            <span>{slot.label}</span>
-                            {slot.available && (
-                              <>
-                                <span className="text-[9px] font-bold opacity-80">{formatPrice(slotPrice)}</span>
-                                <span className="text-[8px] font-normal opacity-60">
-                                  {slot.availableCourts.length} terrain{slot.availableCourts.length > 1 ? "s" : ""}
-                                </span>
-                              </>
+                            <div className="w-16 shrink-0">
+                              <p className={cn("text-sm font-bold", isPeak ? "text-orange-600" : "text-gray-800")}>{slot.label}</p>
+                              <p className="text-[10px] text-gray-400 font-semibold">{formatPrice(slotPrice)}</p>
+                            </div>
+                            {!slot.available ? (
+                              <span className="text-xs text-gray-400 font-medium">Complet</span>
+                            ) : (
+                              <div className="flex gap-1.5 flex-wrap">
+                                {[1, 2, 3].map(c => {
+                                  const courtAvailable = slot.availableCourts.includes(c);
+                                  const selected = inCart(slot.id, c);
+                                  if (!courtAvailable && !selected) return (
+                                    <span key={c} className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border-2 border-gray-100 text-gray-300 line-through">T{c}</span>
+                                  );
+                                  return (
+                                    <button type="button" key={c} onClick={() => toggleCartItem(slot, c)}
+                                      className={cn(
+                                        "px-2.5 py-1.5 rounded-lg text-xs font-bold border-2 transition-all",
+                                        selected ? "border-blue-600 bg-blue-600 text-white" : "border-gray-200 text-gray-600 hover:border-blue-300"
+                                      )}>
+                                      {selected ? "✓ " : ""}T{c}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -421,23 +449,30 @@ export default function FutsalReserverPage() {
                 </div>
               )}
 
-              {selectedSlotId && selectedSlot && (
-                <div>
-                  <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                    <Trophy className="w-4 h-4 text-blue-600" /> Choisissez un terrain
+              {/* 🛒 Cart */}
+              {cart.length > 0 && (
+                <div className="rounded-2xl border-2 border-blue-100 bg-blue-50/60 p-4">
+                  <p className="text-sm font-bold text-blue-800 mb-2 flex items-center gap-1.5">
+                    🛒 Votre panier <span className="text-xs font-normal text-blue-500">({cart.length} créneau{cart.length > 1 ? "x" : ""})</span>
                   </p>
-                  <div className="flex gap-3">
-                    {selectedSlot.availableCourts.map(c => (
-                      <button type="button" key={c} onClick={() => setSelectedCourt(c)}
-                        className={cn(
-                          "flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all",
-                          selectedCourt === c ? "border-blue-600 bg-blue-600 text-white" : "border-gray-200 text-gray-700 hover:border-blue-300"
-                        )}>
-                        Terrain {c}
-                      </button>
+                  <div className="space-y-1.5">
+                    {sortedCart.map(it => (
+                      <div key={`${it.slotId}-${it.court}`} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 text-sm">
+                        <span className="font-semibold text-gray-800">{it.label} · Terrain {it.court}</span>
+                        <span className="flex items-center gap-2">
+                          <span className="font-bold text-blue-700">{formatPrice(it.price)}</span>
+                          <button type="button" onClick={() => removeCartItem(it.slotId, it.court)}
+                            className="p-1 rounded-full hover:bg-red-50 text-red-400 hover:text-red-600">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      </div>
                     ))}
                   </div>
-                  {errors.court && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.court}</p>}
+                  <div className="flex justify-between items-center border-t border-blue-200 mt-2 pt-2">
+                    <span className="text-sm font-bold text-gray-700">Total</span>
+                    <span className="text-lg font-extrabold text-blue-700">{formatPrice(baseTotal)}</span>
+                  </div>
                 </div>
               )}
 
@@ -457,13 +492,10 @@ export default function FutsalReserverPage() {
                     +
                   </button>
                   <div>
-                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(slotBasedPrice)}</p>
-                    <p className="text-xs text-gray-400">terrain fixe · {formatPrice(pricePerPlayer)}/joueur</p>
-                    {selectedSlot && (
-                      <p className={`text-[10px] font-semibold mt-0.5 ${selectedSlot.hour >= peakHour ? "text-orange-500" : "text-blue-400"}`}>
-                        {selectedSlot.hour >= peakHour ? "🟠 Heure de pointe" : "🔵 Heure creuse"}
-                      </p>
-                    )}
+                    <p className="text-2xl font-extrabold text-blue-600">{formatPrice(total)}</p>
+                    <p className="text-xs text-gray-400">
+                      {cart.length > 0 ? `${cart.length} créneau${cart.length > 1 ? "x" : ""} · ${formatPrice(pricePerPlayer)}/joueur` : "Ajoutez un créneau"}
+                    </p>
                   </div>
                 </div>
                 {errors.players && <p className="text-red-500 text-sm mt-1 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{errors.players}</p>}
@@ -480,7 +512,7 @@ export default function FutsalReserverPage() {
             <div className="space-y-4">
               <h2 className="text-xl font-bold text-gray-900">Vos informations</h2>
               <div className="bg-blue-50 rounded-xl p-3 text-sm text-blue-800">
-                ⚽ {date && format(new Date(date + "T12:00:00"), "d MMMM yyyy", { locale: fr })} — {selectedSlot?.label} — Terrain {selectedCourt} — {playerCount} joueurs
+                ⚽ {date && format(new Date(date + "T12:00:00"), "d MMMM yyyy", { locale: fr })} — {sortedCart.map(i => `${i.label} T${i.court}`).join(", ")} — {playerCount} joueurs
               </div>
 
               <div>
@@ -560,14 +592,12 @@ export default function FutsalReserverPage() {
 
               {/* Price summary */}
               <div className="bg-blue-50 rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Location du terrain (1h)</span>
-                  <span className="font-semibold">{formatPrice(courtPrice)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-400">
-                  <span>{formatPrice(courtPrice)} ÷ {playerCount} joueurs</span>
-                  <span>= {formatPrice(pricePerPlayer)} / joueur</span>
-                </div>
+                {sortedCart.map(it => (
+                  <div key={`${it.slotId}-${it.court}`} className="flex justify-between">
+                    <span className="text-gray-500">{it.label} · Terrain {it.court}</span>
+                    <span className="font-semibold">{formatPrice(it.price)}</span>
+                  </div>
+                ))}
                 {promoResult && (
                   <div className="flex justify-between text-emerald-700">
                     <span>Remise ({promoResult.code})</span>
@@ -580,7 +610,7 @@ export default function FutsalReserverPage() {
                 </div>
                 <div className="flex justify-between text-xs text-blue-600 font-medium">
                   <span>Part par joueur</span>
-                  <span>{formatPrice(total / playerCount)}</span>
+                  <span>{formatPrice(pricePerPlayer)}</span>
                 </div>
               </div>
 
