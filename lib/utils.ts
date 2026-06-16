@@ -55,6 +55,19 @@ export async function generateQRCode(data: string): Promise<string> {
   });
 }
 
+// Map a birthday time slot "16:00-19:00" → the futsal hours it occupies → [16, 17, 18]
+export function birthdayTimeToHours(time: string): number[] {
+  const match = time?.match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!match) return [];
+  const startH = parseInt(match[1]);
+  const endH = parseInt(match[3]);
+  const endM = parseInt(match[4]);
+  const hours: number[] = [];
+  for (let h = startH; h < endH + (endM > 0 ? 1 : 0); h++) hours.push(h);
+  if (endM === 0 && hours[hours.length - 1] === endH) hours.pop();
+  return hours;
+}
+
 export function getCategoryLabel(category: string): string {
   const labels: Record<string, string> = {
     marmaille: "Marmaille Parc",

@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       status: { notIn: ["cancelled", "expired"] },
       formula: { category: { in: ["marmaille_foot", "foot"] } },
     },
-    include: { timeSlot: true },
+    include: { timeSlot: true, futsalSlots: { select: { futsalTimeSlotId: true, courtNumber: true, futsalTimeSlot: { select: { hour: true } } } } },
   });
 
   // Build blocked courts per slot id
@@ -114,20 +114,26 @@ export async function GET(req: NextRequest) {
     if (r.courtNumber) bookedPerSlot[r.futsalTimeSlotId].push(r.courtNumber);
   }
 
-  // Map birthday foot → futsal slot hours → use court 1 (or first available)
-  // Birthday foot always occupies court 1 during those hours
+  // Birthday foot → block the allocated court on each occupied hour.
+  // New reservations have explicit futsalSlots (allocated court); legacy ones fall back to court 1.
   const birthdayFootBlockedHours: Set<number> = new Set();
   for (const r of birthdayFootReservations) {
-    if (!r.timeSlot) continue;
-    const hours = timeSlotToHours(r.timeSlot.time);
-    for (const h of hours) birthdayFootBlockedHours.add(h);
-  }
-
-  // For each slot, if birthday foot blocks that hour, mark court 1 as booked
-  for (const slot of slots) {
-    if (birthdayFootBlockedHours.has(slot.hour)) {
-      if (!bookedPerSlot[slot.id]) bookedPerSlot[slot.id] = [];
-      if (!bookedPerSlot[slot.id].includes(1)) bookedPerSlot[slot.id].push(1); // court 1 reserved for bday
+    if (r.futsalSlots && r.futsalSlots.length > 0) {
+      for (const s of r.futsalSlots) {
+        if (!bookedPerSlot[s.futsalTimeSlotId]) bookedPerSlot[s.futsalTimeSlotId] = [];
+        if (!bookedPerSlot[s.futsalTimeSlotId].includes(s.courtNumber)) bookedPerSlot[s.futsalTimeSlotId].push(s.courtNumber);
+        if (s.futsalTimeSlot?.hour !== undefined) birthdayFootBlockedHours.add(s.futsalTimeSlot.hour);
+      }
+    } else if (r.timeSlot) {
+      // Legacy: block court 1 on matching hours
+      const hours = timeSlotToHours(r.timeSlot.time);
+      for (const h of hours) birthdayFootBlockedHours.add(h);
+      for (const slot of slots) {
+        if (hours.includes(slot.hour)) {
+          if (!bookedPerSlot[slot.id]) bookedPerSlot[slot.id] = [];
+          if (!bookedPerSlot[slot.id].includes(1)) bookedPerSlot[slot.id].push(1);
+        }
+      }
     }
   }
 

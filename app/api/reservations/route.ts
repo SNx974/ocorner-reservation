@@ -10,6 +10,7 @@ import {
   generateQRCode,
 } from "@/lib/utils";
 import { sendConfirmationEmail } from "@/lib/email";
+import { allocateFutsalCourts, isFootFormula } from "@/lib/futsal-allocation";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
 const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder");
@@ -172,6 +173,14 @@ export async function POST(req: NextRequest) {
       status = "deposit_pending";
     }
 
+    // Birthday-foot: reserve a futsal court for the whole session
+    let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
+    if (isFootFormula(formula.category, formula.name)) {
+      const alloc = await allocateFutsalCourts({ date: data.date, timeSlotTime: timeSlot.time });
+      if (!alloc.ok) return NextResponse.json({ error: alloc.error }, { status: 409 });
+      footSlots = alloc.rows;
+    }
+
     const reservation = await prisma.reservation.create({
       data: {
         reference,
@@ -198,6 +207,7 @@ export async function POST(req: NextRequest) {
         status,
         expiresAt: needsOnlinePayment || data.paymentType === "onsite_deposit" ? expiresAt : null,
         notes: data.notes,
+        ...(footSlots.length ? { futsalSlots: { create: footSlots } } : {}),
       },
       include: { formula: true, timeSlot: true },
     });

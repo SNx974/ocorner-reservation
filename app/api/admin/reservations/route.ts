@@ -5,6 +5,7 @@ import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isExpired } from "@/lib/utils";
 import { sendCancellationEmail, sendRescheduleEmail } from "@/lib/email";
+import { allocateFutsalCourts, isFootFormula } from "@/lib/futsal-allocation";
 
 function checkAdminAuth(req: NextRequest): boolean {
   return checkAuth(req.headers.get("x-admin-token")).valid;
@@ -75,6 +76,18 @@ export async function POST(req: NextRequest) {
     const fullPaymentPaid = paid >= totalPrice;
     const depositAmount = paid < totalPrice ? paid : 0;
     const adminNotes = [notes, paymentNote ? `Paiement: ${paymentNote}` : ""].filter(Boolean).join(" | ");
+
+    // Birthday-foot: reserve a futsal court for the whole session
+    let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
+    if (isFootFormula(formula?.category, formula?.name)) {
+      const slot = await prisma.timeSlot.findUnique({ where: { id: timeSlotId } });
+      if (slot) {
+        const alloc = await allocateFutsalCourts({ date, timeSlotTime: slot.time });
+        if (!alloc.ok) return NextResponse.json({ error: alloc.error }, { status: 409 });
+        footSlots = alloc.rows;
+      }
+    }
+
     const reservation = await prisma.reservation.create({
       data: {
         reference, type: "birthday",
@@ -90,6 +103,7 @@ export async function POST(req: NextRequest) {
         ...(fullPaymentPaid ? { fullPaymentPaidAt: new Date() } : {}),
         status: "confirmed",
         notes: adminNotes || undefined,
+        ...(footSlots.length ? { futsalSlots: { create: footSlots } } : {}),
       },
       include: { formula: true, timeSlot: true },
     });

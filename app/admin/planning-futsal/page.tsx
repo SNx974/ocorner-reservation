@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAdmin } from "../admin-context";
-import { formatPrice, getStatusLabel } from "@/lib/utils";
+import { formatPrice, getStatusLabel, birthdayTimeToHours } from "@/lib/utils";
 import {
   ChevronLeft, ChevronRight, Users, Loader2, RefreshCw,
   Trophy, Phone, Mail, X, Plus, Trash2, CreditCard, Banknote,
@@ -594,21 +594,24 @@ export default function FutsalPlanningPage() {
       fetch(`/api/admin/reservations?limit=500&type=birthday`, { headers: { "x-admin-token": token } }).then(r => r.json()),
     ]);
 
-    // Birthday+foot reservations: map timeSlot → futsalTimeSlot for display
-    function parseSlotStart(time: string): { hour: number; minute: number } {
-      const match = time?.match(/^(\d{1,2}):(\d{2})/);
-      return match ? { hour: parseInt(match[1]), minute: parseInt(match[2]) } : { hour: 9, minute: 0 };
-    }
+    // Birthday+foot reservations: show across ALL their occupied hours.
+    // New ones have an allocated court (futsalSlots); legacy ones fall back to court 1.
     const FOOT_CATEGORIES = ["marmaille_foot", "foot"];
-    const bdayFoot: FutsalRes[] = ((bdayRes.reservations ?? []) as FutsalRes[])
-      .filter(r => FOOT_CATEGORIES.includes(r.formula?.category ?? "") || r.formula?.name?.toLowerCase().includes("foot"))
-      .filter(r => r.timeSlot)
-      .map(r => ({
-        ...r,
-        courtNumber: 1,
-        playerCount: r.playerCount ?? (r as unknown as { childrenCount?: number }).childrenCount ?? 0,
-        futsalTimeSlot: parseSlotStart(r.timeSlot?.time ?? ""),
-      }));
+    const bdayFoot: FutsalRes[] = [];
+    for (const r of (bdayRes.reservations ?? []) as FutsalRes[]) {
+      const isFoot = FOOT_CATEGORIES.includes(r.formula?.category ?? "") || !!r.formula?.name?.toLowerCase().includes("foot");
+      if (!isFoot) continue;
+      const players = r.playerCount ?? (r as unknown as { childrenCount?: number }).childrenCount ?? 0;
+      if (r.futsalSlots && r.futsalSlots.length > 0) {
+        for (const s of r.futsalSlots) {
+          bdayFoot.push({ ...r, courtNumber: s.courtNumber, playerCount: players, futsalTimeSlot: { hour: s.futsalTimeSlot.hour, minute: s.futsalTimeSlot.minute } });
+        }
+      } else if (r.timeSlot) {
+        for (const h of birthdayTimeToHours(r.timeSlot.time)) {
+          bdayFoot.push({ ...r, courtNumber: 1, playerCount: players, futsalTimeSlot: { hour: h, minute: 0 } });
+        }
+      }
+    }
 
     // Expand cart reservations: one grid entry per (slot + court) line
     const expandedFutsal: FutsalRes[] = [];
