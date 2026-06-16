@@ -100,19 +100,33 @@ export async function POST(req: NextRequest) {
 
   // Futsal reservation
   if (body.type === "futsal") {
-    const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, date, playerCount, notes, amountPaid, paymentMethod } = body;
+    const { clientName, clientEmail, clientPhone, futsalTimeSlotId, courtNumber, slots, date, playerCount, notes, amountPaid, paymentMethod } = body;
     const settings = await prisma.settings.findMany();
     const getSetting = (key: string, fallback: string) => settings.find(s => s.key === key)?.value ?? fallback;
-    const slotForPrice = futsalTimeSlotId ? await prisma.futsalTimeSlot.findUnique({ where: { id: futsalTimeSlotId } }) : null;
-    const slotHour = slotForPrice?.hour ?? 10;
     const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
     const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
     const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));
-    const courtPrice = slotHour >= peakHour ? peakPrice : offpeakPrice;
-    const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : courtPrice;
-    const fullPaymentPaid = paid >= courtPrice;
+
+    // Normalize cart (multi-slot) — accept `slots` array or legacy single slot
+    const cart: Array<{ futsalTimeSlotId: string; courtNumber: number }> =
+      Array.isArray(slots) && slots.length > 0
+        ? slots.map((s: { futsalTimeSlotId: string; courtNumber: number | string }) => ({ futsalTimeSlotId: s.futsalTimeSlotId, courtNumber: parseInt(String(s.courtNumber)) }))
+        : (futsalTimeSlotId ? [{ futsalTimeSlotId, courtNumber: parseInt(courtNumber) }] : []);
+    if (cart.length === 0) return NextResponse.json({ error: "Aucun créneau sélectionné" }, { status: 400 });
+
+    // Load slots + compute total (sum of peak/offpeak per slot)
+    const slotRecords = await prisma.futsalTimeSlot.findMany({ where: { id: { in: cart.map(c => c.futsalTimeSlotId) } } });
+    const slotById = new Map(slotRecords.map(s => [s.id, s]));
+    let totalPrice = 0;
+    for (const c of cart) {
+      const h = slotById.get(c.futsalTimeSlotId)?.hour ?? 10;
+      totalPrice += h >= peakHour ? peakPrice : offpeakPrice;
+    }
+
+    const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : totalPrice;
+    const fullPaymentPaid = paid >= totalPrice;
     const depositPaid = paid > 0;
-    const depositAmount = paid < courtPrice ? paid : 0;
+    const depositAmount = paid < totalPrice ? paid : 0;
     const paymentLabel = paymentMethod === "cb" ? "CB" : paymentMethod === "especes" ? "Espèces" : "";
     const adminNotes = [notes, paymentLabel ? `Paiement: ${paymentLabel}` : ""].filter(Boolean).join(" | ");
     const reservation = await prisma.reservation.create({
@@ -120,9 +134,9 @@ export async function POST(req: NextRequest) {
         reference, type: "futsal",
         clientName, clientEmail: clientEmail || `admin+${reference}@ocorner.re`,
         clientPhone: clientPhone || "0000000000",
-        futsalTimeSlotId, courtNumber: parseInt(courtNumber),
+        futsalTimeSlotId: cart[0].futsalTimeSlotId, courtNumber: cart[0].courtNumber,
         date: new Date(date), playerCount: parseInt(playerCount),
-        totalPrice: courtPrice, basePrice: courtPrice,
+        totalPrice, basePrice: totalPrice,
         paymentType: "admin", depositAmount,
         depositPaid, fullPaymentPaid,
         ...(depositPaid ? { depositPaidAt: new Date(), depositPaymentMethod: paymentMethod === "cb" ? "cb" : "onsite" } : {}),
@@ -130,8 +144,9 @@ export async function POST(req: NextRequest) {
         status: "confirmed",
         notes: adminNotes || undefined,
         shareToken: crypto.randomUUID(),
+        futsalSlots: { create: cart.map(c => ({ futsalTimeSlotId: c.futsalTimeSlotId, courtNumber: c.courtNumber })) },
       },
-      include: { futsalTimeSlot: true },
+      include: { futsalTimeSlot: true, futsalSlots: { include: { futsalTimeSlot: true } } },
     });
     const qrCode = await generateQRCode(JSON.stringify({ ref: reference, id: reservation.id, type: "futsal" }));
     await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });

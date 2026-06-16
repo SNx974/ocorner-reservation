@@ -372,7 +372,7 @@ function QuickAddModal({
   token, date, hour, minute, court: defaultCourt, onClose, onCreated,
 }: { token: string; date: string; hour: number; minute: number; court: number; onClose: () => void; onCreated: () => void }) {
   const [futsalSlots, setFutsalSlots] = useState<FutsalSlot[]>([]);
-  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
   const [court, setCourt] = useState(defaultCourt);
   const [playerCount, setPlayerCount] = useState(10);
   const [clientName, setClientName] = useState("");
@@ -381,39 +381,59 @@ function QuickAddModal({
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cb" | "especes" | "none">("none");
   const [amountPaid, setAmountPaid] = useState("");
-  const [courtPrice, setCourtPrice] = useState(110);
+  const [amountTouched, setAmountTouched] = useState(false);
+  const [prices, setPrices] = useState({ offpeak: 90, peak: 110, peakHour: 17 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/futsal/availability?date=" + date).then(r => r.json()),
+      fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }).then(r => r.json()),
       fetch("/api/admin/settings", { headers: { "x-admin-token": token } }).then(r => r.json()),
-    ]).then(([slots, settings]) => {
+    ]).then(([slotsRaw, settings]) => {
+      const slots: FutsalSlot[] = (Array.isArray(slotsRaw) ? slotsRaw : [])
+        .filter((s: FutsalSlot) => s.isActive)
+        .sort((a: FutsalSlot, b: FutsalSlot) => a.hour - b.hour || a.minute - b.minute);
       setFutsalSlots(slots);
-      const found = slots.find((s: FutsalSlot) => s.hour === hour && s.minute === minute);
-      if (found) setSelectedSlotId(found.id);
-      else if (slots.length) setSelectedSlotId(slots[0].id);
-      const price = parseFloat(settings?.futsal_court_price ?? "110");
-      setCourtPrice(price);
-      setAmountPaid(price.toString());
+      const found = slots.find(s => s.hour === hour && s.minute === minute);
+      setSelectedSlotIds(found ? [found.id] : slots.length ? [slots[0].id] : []);
+      setPrices({
+        offpeak: parseFloat(settings?.futsal_price_offpeak ?? settings?.futsal_court_price ?? "90"),
+        peak: parseFloat(settings?.futsal_price_peak ?? settings?.futsal_court_price ?? "110"),
+        peakHour: parseInt(settings?.futsal_price_peak_from ?? "17"),
+      });
     });
   }, [date, hour, minute, token]);
 
+  const slotPrice = (h: number) => (h >= prices.peakHour ? prices.peak : prices.offpeak);
+  const total = selectedSlotIds.reduce((sum, id) => {
+    const s = futsalSlots.find(fs => fs.id === id);
+    return sum + (s ? slotPrice(s.hour) : 0);
+  }, 0);
+
+  // Default the encashed amount to the running total until the admin edits it
+  useEffect(() => {
+    if (!amountTouched) setAmountPaid(total ? String(total) : "");
+  }, [total, amountTouched]);
+
+  function toggleSlot(id: string) {
+    setSelectedSlotIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
   async function submit() {
     if (!clientName.trim()) { setError("Nom du client requis"); return; }
-    if (!selectedSlotId) { setError("Créneau requis"); return; }
+    if (selectedSlotIds.length === 0) { setError("Sélectionnez au moins un créneau"); return; }
     setLoading(true); setError("");
     const res = await fetch("/api/admin/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({
         type: "futsal", clientName, clientEmail, clientPhone,
-        futsalTimeSlotId: selectedSlotId, courtNumber: court,
+        slots: selectedSlotIds.map(id => ({ futsalTimeSlotId: id, courtNumber: court })),
         date, playerCount,
         notes,
         paymentMethod: paymentMethod !== "none" ? paymentMethod : undefined,
-        amountPaid: paymentMethod !== "none" ? parseFloat(amountPaid) || courtPrice : courtPrice,
+        amountPaid: paymentMethod !== "none" ? parseFloat(amountPaid) || total : total,
       }),
     });
     if (res.ok) { onCreated(); onClose(); }
@@ -422,7 +442,7 @@ function QuickAddModal({
   }
 
   const paid = parseFloat(amountPaid) || 0;
-  const remaining = courtPrice - paid;
+  const remaining = total - paid;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
@@ -435,36 +455,51 @@ function QuickAddModal({
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="space-y-3">
-          {/* Créneau + Terrain */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Créneau</label>
-              <select value={selectedSlotId} onChange={e => setSelectedSlotId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                {futsalSlots.map(s => (
-                  <option key={s.id} value={s.id}>{slotLabel(s.hour, s.minute)}</option>
-                ))}
-              </select>
+          {/* Terrain */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Terrain</label>
+            <div className="flex gap-1.5">
+              {COURTS.map(c => {
+                const cfg = courtConfig[c - 1];
+                return (
+                  <button key={c} type="button" onClick={() => setCourt(c)}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all",
+                      court === c
+                        ? cn(cfg.light, cfg.text, cfg.color)
+                        : "border-gray-200 text-gray-500 hover:border-gray-300"
+                    )}>
+                    T{c}
+                  </button>
+                );
+              })}
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">Terrain</label>
-              <div className="flex gap-1.5">
-                {COURTS.map(c => {
-                  const cfg = courtConfig[c - 1];
-                  return (
-                    <button key={c} type="button" onClick={() => setCourt(c)}
-                      className={cn(
-                        "flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all",
-                        court === c
-                          ? cn(cfg.light, cfg.text, cfg.color)
-                          : "border-gray-200 text-gray-500 hover:border-gray-300"
-                      )}>
-                      T{c}
-                    </button>
-                  );
-                })}
-              </div>
+          </div>
+
+          {/* Créneaux (multi-sélection) */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">
+              Créneaux <span className="font-normal text-gray-400">— cliquez pour en sélectionner plusieurs</span>
+            </label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {futsalSlots.map(s => {
+                const selected = selectedSlotIds.includes(s.id);
+                return (
+                  <button key={s.id} type="button" onClick={() => toggleSlot(s.id)}
+                    className={cn(
+                      "py-1.5 rounded-lg border-2 text-xs font-bold transition-all",
+                      selected ? "border-blue-600 bg-blue-600 text-white" : "border-gray-200 text-gray-600 hover:border-blue-300"
+                    )}>
+                    {selected ? "✓ " : ""}{slotLabel(s.hour, s.minute)}
+                  </button>
+                );
+              })}
             </div>
+            {selectedSlotIds.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1.5">
+                {selectedSlotIds.length} créneau{selectedSlotIds.length > 1 ? "x" : ""} · Terrain {court} · <span className="font-bold text-blue-700">{formatPrice(total)}</span>
+              </p>
+            )}
           </div>
 
           {/* Client */}
@@ -509,11 +544,11 @@ function QuickAddModal({
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
                   <label className="block text-xs font-semibold text-gray-500 mb-1">Montant encaissé (€)</label>
-                  <Input type="number" min={0} max={courtPrice} step={5}
-                    value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+                  <Input type="number" min={0} max={total} step={5}
+                    value={amountPaid} onChange={e => { setAmountTouched(true); setAmountPaid(e.target.value); }} />
                 </div>
                 <div className="text-right pb-2">
-                  <p className="text-xs text-gray-400">Total: {formatPrice(courtPrice)}</p>
+                  <p className="text-xs text-gray-400">Total: {formatPrice(total)}</p>
                   <p className={cn("text-xs font-bold", remaining <= 0 ? "text-green-600" : "text-amber-600")}>
                     {remaining <= 0 ? "Soldé ✓" : `Reste: ${formatPrice(remaining)}`}
                   </p>
