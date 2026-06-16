@@ -52,6 +52,7 @@ async function createCheckoutSession(
   reference: string,
   baseUrl: string,
   clientName?: string,
+  piDescription?: string,
 ) {
   const { stripe, formatAmountForStripe, getOrCreateStripeCustomer } = await import("@/lib/stripe");
   let customerId: string | undefined;
@@ -70,6 +71,8 @@ async function createCheckoutSession(
       quantity: 1,
     }],
     metadata,
+    // Description shown in the Stripe payments list (on the underlying PaymentIntent)
+    ...(piDescription ? { payment_intent_data: { description: piDescription } } : {}),
     success_url: `${baseUrl}/futsal/success?reference=${reference}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/futsal/reserver`,
     locale: "fr",
@@ -234,6 +237,10 @@ export async function POST(req: NextRequest) {
       const description = (data.paymentType === "online_full"
         ? `Futsal ${slotsLabel} – ${data.playerCount} joueurs`
         : `Acompte Futsal ${slotsLabel}`).slice(0, 240);
+      // Description shown in the Stripe payments list: "Nom — Terrain X — Date — Réf"
+      const dateLabel = new Date(data.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      const piDescription = (`${data.clientName} — Terrain ${courtsList} — ${dateLabel} — ${reference}`).slice(0, 240);
+      const finalPiDescription = data.paymentType === "online_full" ? piDescription : `Acompte — ${piDescription}`;
       const amountToPay = data.paymentType === "online_full" ? totalPrice : depositAmount;
       const session = await createCheckoutSession(
         amountToPay,
@@ -246,6 +253,7 @@ export async function POST(req: NextRequest) {
         reference,
         baseUrl,
         data.clientName,
+        finalPiDescription,
       );
       stripeCheckoutSessionId = session.id;
       // Also store the payment intent ID if available
