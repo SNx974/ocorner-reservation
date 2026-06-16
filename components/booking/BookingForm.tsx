@@ -253,6 +253,12 @@ export function BookingForm() {
 
       if (!res.ok) throw new Error(json.error ?? `Erreur serveur (${res.status})`);
 
+      if (json.checkoutUrl) {
+        // Real Stripe: redirect to the hosted Checkout page
+        window.location.href = json.checkoutUrl;
+        return;
+      }
+
       setReservationResult(json.reservation);
 
       if (json.clientSecret) {

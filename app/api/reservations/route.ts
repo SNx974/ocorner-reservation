@@ -29,21 +29,40 @@ const reservationSchema = z.object({
   discountAmount: z.number().optional(),
 });
 
-async function createStripeIntent(amount: number, metadata: Record<string, string>, description: string, clientEmail?: string, clientName?: string) {
+// Build base URL from the request (works in all environments)
+function getBaseUrl(req: NextRequest): string {
+  const host = req.headers.get("host") ?? "localhost:3000";
+  const proto = req.headers.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+// Hosted Stripe Checkout session (same UX as futsal)
+async function createCheckoutSession(opts: {
+  amount: number; productName: string; piDescription: string;
+  metadata: Record<string, string>; reference: string; baseUrl: string;
+  clientEmail: string; clientName: string;
+}) {
   const { stripe, formatAmountForStripe, getOrCreateStripeCustomer } = await import("@/lib/stripe");
   let customerId: string | undefined;
-  if (clientEmail) {
-    try { customerId = await getOrCreateStripeCustomer(clientEmail, clientName); } catch { /* silent */ }
-  }
-  const intent = await stripe.paymentIntents.create({
-    amount: formatAmountForStripe(amount),
-    currency: "eur",
-    metadata,
-    description,
-    ...(customerId ? { customer: customerId } : {}),
-    ...(clientEmail && !customerId ? { receipt_email: clientEmail } : {}),
+  try { customerId = await getOrCreateStripeCustomer(opts.clientEmail, opts.clientName); } catch { /* silent */ }
+  return stripe.checkout.sessions.create({
+    mode: "payment",
+    payment_method_types: ["card"],
+    line_items: [{
+      price_data: {
+        currency: "eur",
+        product_data: { name: opts.productName },
+        unit_amount: formatAmountForStripe(opts.amount),
+      },
+      quantity: 1,
+    }],
+    metadata: opts.metadata,
+    payment_intent_data: { description: opts.piDescription },
+    success_url: `${opts.baseUrl}/reservation/success?reference=${opts.reference}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${opts.baseUrl}/`,
+    locale: "fr",
+    ...(customerId ? { customer: customerId } : { customer_email: opts.clientEmail }),
   });
-  return intent;
 }
 
 export async function POST(req: NextRequest) {
@@ -102,7 +121,9 @@ export async function POST(req: NextRequest) {
     let status = "pending";
     let stripePaymentIntentId: string | undefined;
     let stripeDepositIntentId: string | undefined;
+    let stripeCheckoutSessionId: string | undefined;
     let stripeClientSecret: string | undefined;
+    let checkoutUrl: string | undefined;
     let depositPaid = false;
     let fullPaymentPaid = false;
 
@@ -120,32 +141,28 @@ export async function POST(req: NextRequest) {
       );
 
     if (!IS_DEMO && needsOnlinePayment) {
-      // Real Stripe flow
+      // Real Stripe: hosted Checkout (redirect), same UX as futsal
+      const isFull = data.paymentType === "online_full";
       const dateLabel = new Date(data.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
       const baseDesc = `${data.clientName} — ${formula.name} — ${dateLabel} — ${reference}`;
-      if (data.paymentType === "online_full") {
-        const intent = await createStripeIntent(
-          totalPrice,
-          { reference, type: "full" },
-          baseDesc,
-          data.clientEmail,
-          data.clientName,
-        );
-        stripePaymentIntentId = intent.id;
-        stripeClientSecret = intent.client_secret!;
-        status = "pending";
-      } else {
-        const intent = await createStripeIntent(
-          depositAmount,
-          { reference, type: "deposit" },
-          `Acompte — ${baseDesc}`,
-          data.clientEmail,
-          data.clientName,
-        );
-        stripeDepositIntentId = intent.id;
-        stripeClientSecret = intent.client_secret!;
-        status = "deposit_pending";
+      const amountToPay = isFull ? totalPrice : depositAmount;
+      const session = await createCheckoutSession({
+        amount: amountToPay,
+        productName: isFull ? `${formula.name} — ${data.childrenCount} enfants` : `Acompte — ${formula.name}`,
+        piDescription: (isFull ? baseDesc : `Acompte — ${baseDesc}`).slice(0, 240),
+        metadata: { reference, type: isFull ? "birthday_full" : "birthday_deposit", clientEmail: data.clientEmail },
+        reference,
+        baseUrl: getBaseUrl(req),
+        clientEmail: data.clientEmail,
+        clientName: data.clientName,
+      });
+      stripeCheckoutSessionId = session.id;
+      if (typeof session.payment_intent === "string") {
+        if (isFull) stripePaymentIntentId = session.payment_intent;
+        else stripeDepositIntentId = session.payment_intent;
       }
+      checkoutUrl = session.url!;
+      status = isFull ? "pending" : "deposit_pending";
     } else if (IS_DEMO && needsOnlinePayment) {
       // Demo mode: return a fake clientSecret so the frontend shows the demo form
       stripeClientSecret = `demo_secret_${reference}`;
@@ -176,6 +193,7 @@ export async function POST(req: NextRequest) {
         fullPaymentPaid,
         stripePaymentIntentId,
         stripeDepositIntentId,
+        stripeCheckoutSessionId,
         depositPaymentMethod: data.depositPaymentMethod,
         status,
         expiresAt: needsOnlinePayment || data.paymentType === "onsite_deposit" ? expiresAt : null,
@@ -214,6 +232,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       reservation: { ...reservation, qrCode },
       clientSecret: stripeClientSecret,
+      checkoutUrl,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
