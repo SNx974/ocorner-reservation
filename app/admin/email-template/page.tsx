@@ -29,6 +29,8 @@ interface TemplateData {
   email_futsal_tip: string;
   email_cancel_message: string;
   email_reminder_message: string;
+  email_jm3_subtitle: string;
+  email_jm3_message: string;
 }
 
 const SECTION_TABS = [
@@ -266,6 +268,8 @@ export default function EmailTemplatePage() {
     email_futsal_tip: "",
     email_cancel_message: "",
     email_reminder_message: "",
+    email_jm3_subtitle: "",
+    email_jm3_message: "",
   });
 
   const [blocks, setBlocks] = useState<InfoBlock[]>([]);
@@ -432,6 +436,22 @@ export default function EmailTemplatePage() {
                     <p className="text-xs text-gray-400 mb-1.5">Texte affiché dans l'email rouge d'annulation</p>
                     <textarea value={tpl.email_cancel_message} onChange={e => set("email_cancel_message", e.target.value)} rows={3}
                       className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-sm font-bold text-gray-800 mb-1">📋 Rappel J-3 (confirmation des enfants)</p>
+                    <p className="text-xs text-gray-400 mb-3">Envoyé automatiquement 3 jours avant chaque anniversaire. Le numéro SMS est celui du champ « Téléphone » (onglet Général).</p>
+                    <div className="mb-3">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Sous-titre</label>
+                      <input value={tpl.email_jm3_subtitle} onChange={e => set("email_jm3_subtitle", e.target.value)}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Message principal</label>
+                      <p className="text-xs text-gray-400 mb-1.5">Paragraphe expliquant pourquoi confirmer le nombre d'enfants</p>
+                      <textarea value={tpl.email_jm3_message} onChange={e => set("email_jm3_message", e.target.value)} rows={4}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                    </div>
                   </div>
                 </>
               )}

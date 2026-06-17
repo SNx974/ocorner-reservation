@@ -43,6 +43,11 @@ const securityHeaders = [
 const nextConfig = {
   output: "standalone",
 
+  // Active le hook d'instrumentation (planificateur intégré des rappels J-3)
+  experimental: {
+    instrumentationHook: true,
+  },
+
   // Supprime le header X-Powered-By: Next.js
   poweredByHeader: false,
 

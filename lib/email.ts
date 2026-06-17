@@ -399,6 +399,53 @@ export async function sendDepositReminderEmail(data: ReservationEmailData) {
   return sendAndSave({ to: data.clientEmail, subject: `⏰ Rappel acompte — Réservation ${data.reference}`, html, type: "reminder", reference: data.reference, reservationId: data.reservationId });
 }
 
+// J-3 birthday reminder: ask the client to confirm the number of children by SMS
+export async function sendBirthdayChildrenConfirmEmail(data: ReservationEmailData) {
+  const tpl = await getTemplateSettings();
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const parkName = tpl.email_park_name ?? "Ocorner";
+  const subtitle = tpl.email_jm3_subtitle ?? EMAIL_TEMPLATE_DEFAULTS.email_jm3_subtitle;
+  const message = tpl.email_jm3_message ?? EMAIL_TEMPLATE_DEFAULTS.email_jm3_message;
+  const smsHref = `sms:${phone.replace(/\s/g, "")}?body=${encodeURIComponent(`Réservation ${data.reference} — nombre d'enfants : `)}`;
+
+  const html = baseLayout(`
+<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+  <div style="background:#0a1628;padding:28px 32px;text-align:center;">
+    <div style="font-size:40px;">📋</div>
+    <h1 style="margin:8px 0 0;color:white;font-size:22px;">Confirmation du nombre d'enfants</h1>
+    <p style="margin:6px 0 0;color:#c8f135;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${subtitle}</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">
+      Votre fête d'anniversaire approche : elle aura lieu le <strong>${formatDate(data.date)}</strong> sur le créneau <strong>${data.time}</strong>.
+    </p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">${message}</p>
+
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
+      <p style="margin:0 0 10px;font-size:14px;color:#166534;font-weight:600;">📲 Merci de confirmer le nombre d'enfants par SMS</p>
+      <a href="${smsHref}" style="display:inline-block;background:#10b981;color:#ffffff;font-weight:700;font-size:16px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+        ${phone}
+      </a>
+      <p style="margin:12px 0 0;font-size:13px;color:#15803d;">
+        En précisant votre référence : <strong style="font-family:monospace;letter-spacing:1px;">${data.reference}</strong>
+      </p>
+    </div>
+
+    <p style="font-size:13px;color:#94a3b8;line-height:1.6;">
+      À défaut de retour de votre part, nous maintiendrons l'effectif prévu lors de la réservation (<strong>${data.childrenCount} enfants</strong>).
+    </p>
+    <p style="font-size:14px;color:#475569;">Nous avons hâte de vous accueillir ! 🎉<br/>L'équipe ${parkName}</p>
+  </div>
+</div>`, `Confirmation enfants — ${data.reference}`, phone);
+
+  return sendAndSave({
+    to: data.clientEmail,
+    subject: `📋 Confirmation du nombre d'enfants — Réservation ${data.reference}`,
+    html, type: "birthday_jm3", reference: data.reference, reservationId: data.reservationId,
+  });
+}
+
 export async function sendCancellationEmail(data: ReservationEmailData) {
   const tpl = await getTemplateSettings();
   const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;

@@ -26,6 +26,10 @@ export const EMAIL_TEMPLATE_DEFAULTS = {
 
   // Reminder
   email_reminder_message: "Votre réservation est toujours en attente de votre acompte. Sans paiement dans les 24h, votre créneau sera libéré automatiquement.",
+
+  // J-3 birthday reminder (confirm number of children)
+  email_jm3_subtitle: "Plus que quelques jours ! 🎉",
+  email_jm3_message: "Afin de préparer votre événement dans les meilleures conditions — mise en place des tables, ajustement des préparations et des quantités d'ingrédients — nous vous remercions de bien vouloir confirmer le nombre d'enfants présents.",
 };
 
 export type EmailTemplateKey = keyof typeof EMAIL_TEMPLATE_DEFAULTS;
