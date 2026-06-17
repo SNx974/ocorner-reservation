@@ -116,3 +116,72 @@ export async function allocateFutsalCourts(opts: {
 
   return { ok: true, rows };
 }
+
+/**
+ * Allocate ONE free hour of foot for a birthday (the "1h offerte").
+ * Picks the first free (hour, court) within the party window. Never blocks:
+ * returns null if nothing is free (the booking proceeds, staff schedules later).
+ */
+export async function allocateOneFootHour(opts: {
+  date: string | Date;
+  timeSlotTime: string;
+  excludeReservationId?: string;
+}): Promise<AllocationRow | null> {
+  const hours = birthdayTimeToHours(opts.timeSlotTime);
+  if (hours.length === 0) return null;
+
+  const settings = await prisma.settings.findMany({ where: { key: "futsal_max_courts" } });
+  const maxCourts = parseInt(settings.find(s => s.key === "futsal_max_courts")?.value ?? "3");
+
+  const slotRecords = await prisma.futsalTimeSlot.findMany({ where: { hour: { in: hours }, minute: 0 } });
+  const hourToSlotId = new Map<number, string>();
+  for (const s of slotRecords) if (!hourToSlotId.has(s.hour)) hourToSlotId.set(s.hour, s.id);
+
+  const dayStr = typeof opts.date === "string" ? opts.date.slice(0, 10) : opts.date.toISOString().slice(0, 10);
+  const start = new Date(dayStr + "T00:00:00");
+  const end = new Date(dayStr + "T23:59:59");
+
+  const bookedByHour = new Map<number, Set<number>>();
+  for (const h of hours) bookedByHour.set(h, new Set<number>());
+
+  const reservations = await prisma.reservation.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      status: { notIn: ["cancelled", "expired"] },
+      ...(opts.excludeReservationId ? { id: { not: opts.excludeReservationId } } : {}),
+    },
+    select: {
+      type: true, courtNumber: true,
+      futsalTimeSlot: { select: { hour: true } },
+      futsalSlots: { select: { courtNumber: true, futsalTimeSlot: { select: { hour: true } } } },
+      timeSlot: { select: { time: true } },
+      formula: { select: { category: true, name: true } },
+    },
+  });
+
+  for (const r of reservations) {
+    if (r.futsalSlots.length > 0) {
+      for (const s of r.futsalSlots) {
+        const h = s.futsalTimeSlot?.hour;
+        if (h !== undefined && bookedByHour.has(h)) bookedByHour.get(h)!.add(s.courtNumber);
+      }
+    } else if (r.type === "futsal" && r.futsalTimeSlot && r.courtNumber) {
+      const h = r.futsalTimeSlot.hour;
+      if (bookedByHour.has(h)) bookedByHour.get(h)!.add(r.courtNumber);
+    } else if (r.type === "birthday" && isFootFormula(r.formula?.category, r.formula?.name) && r.timeSlot) {
+      for (const h of birthdayTimeToHours(r.timeSlot.time)) {
+        if (bookedByHour.has(h)) bookedByHour.get(h)!.add(1);
+      }
+    }
+  }
+
+  // First free (hour, court) in chronological order
+  for (const h of hours) {
+    if (!hourToSlotId.has(h)) continue;
+    const booked = bookedByHour.get(h) ?? new Set<number>();
+    for (let c = 1; c <= maxCourts; c++) {
+      if (!booked.has(c)) return { futsalTimeSlotId: hourToSlotId.get(h)!, courtNumber: c };
+    }
+  }
+  return null;
+}

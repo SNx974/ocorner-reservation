@@ -10,7 +10,7 @@ import {
   generateQRCode,
 } from "@/lib/utils";
 import { sendConfirmationEmail } from "@/lib/email";
-import { allocateFutsalCourts, isFootFormula } from "@/lib/futsal-allocation";
+import { allocateOneFootHour, isFootFormula } from "@/lib/futsal-allocation";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY ?? "";
 const IS_DEMO = !STRIPE_KEY || STRIPE_KEY.includes("placeholder");
@@ -173,12 +173,12 @@ export async function POST(req: NextRequest) {
       status = "deposit_pending";
     }
 
-    // Birthday-foot: reserve a futsal court for the whole session
+    // Birthday-foot: 1h of foot offered → auto-reserve the first free hour+court
+    // in the party window (non-blocking: if nothing is free, staff schedules later).
     let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
     if (isFootFormula(formula.category, formula.name)) {
-      const alloc = await allocateFutsalCourts({ date: data.date, timeSlotTime: timeSlot.time });
-      if (!alloc.ok) return NextResponse.json({ error: alloc.error }, { status: 409 });
-      footSlots = alloc.rows;
+      const footRow = await allocateOneFootHour({ date: data.date, timeSlotTime: timeSlot.time });
+      if (footRow) footSlots = [footRow];
     }
 
     const reservation = await prisma.reservation.create({

@@ -5,7 +5,7 @@ import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isExpired } from "@/lib/utils";
 import { sendCancellationEmail, sendRescheduleEmail, sendConfirmationEmail } from "@/lib/email";
-import { allocateFutsalCourts, isFootFormula } from "@/lib/futsal-allocation";
+import { allocateOneFootHour, isFootFormula } from "@/lib/futsal-allocation";
 
 function checkAdminAuth(req: NextRequest): boolean {
   return checkAuth(req.headers.get("x-admin-token")).valid;
@@ -18,7 +18,8 @@ function sendReservationConfirmation(r: {
   futsalTimeSlot?: { hour: number; minute: number } | null;
   childrenCount?: number; playerCount?: number | null; courtNumber?: number | null;
   totalPrice: number; depositAmount: number; paymentType: string; status: string; qrCode?: string | null;
-}) {
+  depositPaid?: boolean; fullPaymentPaid?: boolean;
+}, paymentStatusOverride?: "paid" | "deposit" | "due") {
   const isFutsal = r.type === "futsal";
   const time = r.timeSlot?.time
     ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}h${r.futsalTimeSlot.minute > 0 ? String(r.futsalTimeSlot.minute).padStart(2, "0") : "00"}` : "—");
@@ -36,6 +37,9 @@ function sendReservationConfirmation(r: {
     status: r.status,
     qrCode: r.qrCode ?? undefined,
     isBirthday: !isFutsal,
+    depositPaid: r.depositPaid,
+    fullPaymentPaid: r.fullPaymentPaid,
+    paymentStatusOverride,
   });
 }
 
@@ -120,14 +124,19 @@ export async function POST(req: NextRequest) {
       effectiveTimeSlotId = ts.id;
     }
 
-    // Birthday-foot: reserve a futsal court for the whole session
+    // Birthday-foot: 1h of foot offered. Use the slot the admin explicitly picked
+    // (verified against availability in the UI); otherwise auto-pick the first free
+    // hour+court. Never blocks the booking.
     let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
     if (isFootFormula(formula?.category, formula?.name)) {
-      const slot = await prisma.timeSlot.findUnique({ where: { id: effectiveTimeSlotId } });
-      if (slot) {
-        const alloc = await allocateFutsalCourts({ date, timeSlotTime: slot.time });
-        if (!alloc.ok) return NextResponse.json({ error: alloc.error }, { status: 409 });
-        footSlots = alloc.rows;
+      if (body.footSlot?.futsalTimeSlotId && body.footSlot?.courtNumber) {
+        footSlots = [{ futsalTimeSlotId: body.footSlot.futsalTimeSlotId, courtNumber: parseInt(String(body.footSlot.courtNumber)) }];
+      } else {
+        const slot = await prisma.timeSlot.findUnique({ where: { id: effectiveTimeSlotId } });
+        if (slot) {
+          const row = await allocateOneFootHour({ date, timeSlotTime: slot.time });
+          if (row) footSlots = [row];
+        }
       }
     }
 
@@ -287,7 +296,8 @@ export async function PATCH(req: NextRequest) {
       if (!reservation.clientEmail || !reservation.clientEmail.includes("@")) {
         return NextResponse.json({ error: "Aucune adresse email valide pour cette réservation" }, { status: 400 });
       }
-      const result = await sendReservationConfirmation(reservation);
+      const validOverride = ["paid", "deposit", "due"].includes(body.paymentStatus) ? body.paymentStatus : undefined;
+      const result = await sendReservationConfirmation(reservation, validOverride);
       if (result?.status !== "sent") {
         return NextResponse.json({ error: result?.errorMessage ?? "Échec de l'envoi" }, { status: 500 });
       }

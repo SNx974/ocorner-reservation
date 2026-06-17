@@ -419,6 +419,9 @@ function QuickAddModal({
     customEnd: "",       // custom time range end "HH:MM"
   });
   const [useCustomTime, setUseCustomTime] = useState(false);
+  const [footAvail, setFootAvail] = useState<Array<{ id: string; hour: number; minute: number; label: string; availableCourts: number[] }>>([]);
+  const [footSlotId, setFootSlotId] = useState("");
+  const [footCourt, setFootCourt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -437,6 +440,20 @@ function QuickAddModal({
   }, [defaultSlot]);
 
   const selectedFormula = formulas.find(f => f.id === form.formulaId);
+  const isFootFormula = !!selectedFormula && (
+    ["foot", "marmaille_foot"].includes(selectedFormula.category) ||
+    selectedFormula.name.toLowerCase().includes("foot")
+  );
+
+  // Load futsal availability for the chosen day when the formula includes foot
+  useEffect(() => {
+    if (!isFootFormula || !form.date) { setFootAvail([]); setFootSlotId(""); setFootCourt(null); return; }
+    fetch(`/api/futsal/availability?date=${form.date}`)
+      .then(r => r.json())
+      .then(d => setFootAvail(Array.isArray(d?.slots) ? d.slots.filter((s: { availableCourts: number[] }) => s.availableCourts.length > 0) : []))
+      .catch(() => setFootAvail([]));
+  }, [isFootFormula, form.date]);
+
   const autoPrice = selectedFormula ? selectedFormula.pricePerChild * parseInt(form.childrenCount || "0") : 0;
   const totalPrice = form.customPrice ? parseFloat(form.customPrice) : autoPrice;
   const amountPaid = parseFloat(form.amountPaid || "0");
@@ -465,6 +482,9 @@ function QuickAddModal({
         notes: [form.notes, form.paymentNote ? `Paiement: ${form.paymentNote}` : ""].filter(Boolean).join(" | "),
         customPrice: form.customPrice ? parseFloat(form.customPrice) : undefined,
         amountPaid: amountPaid > 0 ? amountPaid : undefined,
+        footSlot: isFootFormula && footSlotId && footCourt
+          ? { futsalTimeSlotId: footSlotId, courtNumber: footCourt }
+          : undefined,
       }),
     });
     if (res.ok) { onCreated(); onClose(); }
@@ -488,6 +508,11 @@ function QuickAddModal({
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">📅 Date *</label>
               <Input type="date" value={form.date} onChange={e => set("date", e.target.value)} />
+              {form.date && (
+                <p className="text-[11px] text-gray-400 mt-1 capitalize">
+                  → {format(new Date(form.date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+                </p>
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -523,6 +548,37 @@ function QuickAddModal({
               ))}
             </select>
           </div>
+
+          {/* Foot session (1h offered) — only for foot formulas */}
+          {isFootFormula && (
+            <div className="rounded-xl border-2 border-emerald-100 bg-emerald-50/60 p-3">
+              <p className="text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1.5">
+                🎁 Session foot — 1h offerte
+              </p>
+              <p className="text-[11px] text-emerald-700 mb-2">
+                Cette formule inclut 1h de foot. Choisissez un créneau libre (terrain réservé en même temps que l'anniversaire).
+              </p>
+              {footAvail.length === 0 ? (
+                <p className="text-[11px] text-amber-600">Aucun terrain libre ce jour — la session sera à planifier manuellement.</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {footAvail.flatMap(slot =>
+                    slot.availableCourts.map(c => {
+                      const selected = footSlotId === slot.id && footCourt === c;
+                      return (
+                        <button key={`${slot.id}-${c}`} type="button"
+                          onClick={() => { setFootSlotId(slot.id); setFootCourt(c); }}
+                          className={cn("px-2.5 py-1.5 rounded-lg text-xs font-bold border-2 transition-all",
+                            selected ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-200 text-emerald-700 hover:border-emerald-400")}>
+                          {selected ? "✓ " : ""}{slot.hour}h · T{c}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">👶 Nombre d'enfants *</label>

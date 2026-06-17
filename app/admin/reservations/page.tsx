@@ -167,6 +167,7 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showMailMenu, setShowMailMenu] = useState(false);
 
   async function action(act: string) {
     setLoading(true);
@@ -179,12 +180,13 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
     onRefresh();
   }
 
-  async function sendConfirmationMail() {
+  async function sendConfirmationMail(paymentStatus: "paid" | "deposit" | "due") {
+    setShowMailMenu(false);
     setLoading(true);
     const res = await fetch("/api/admin/reservations", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ id: r.id, action: "send_confirmation" }),
+      body: JSON.stringify({ id: r.id, action: "send_confirmation", paymentStatus }),
     });
     const json = await res.json().catch(() => ({}));
     setLoading(false);
@@ -369,13 +371,26 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
                 </Button>
               )}
 
-              {/* Send confirmation email */}
+              {/* Send confirmation email — choose payment wording */}
               {r.clientEmail && r.clientEmail.includes("@") && !r.clientEmail.startsWith("admin+") && (
-                <Button size="sm" variant="outline" onClick={sendConfirmationMail} disabled={loading}
-                  className="border-blue-300 text-blue-700 hover:bg-blue-50">
-                  <Mail className="w-3.5 h-3.5 mr-1" />
-                  Envoyer le mail
-                </Button>
+                <div className="relative">
+                  <Button size="sm" variant="outline" onClick={() => setShowMailMenu(v => !v)} disabled={loading}
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                    <Mail className="w-3.5 h-3.5 mr-1" />
+                    Envoyer le mail
+                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                  {showMailMenu && (
+                    <div className="absolute z-20 mt-1 w-52 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                      <button onClick={() => sendConfirmationMail("paid")}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-green-50 text-green-700">✅ Paiement complet reçu</button>
+                      <button onClick={() => sendConfirmationMail("deposit")}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-blue-700">💳 Acompte payé</button>
+                      <button onClick={() => sendConfirmationMail("due")}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 text-amber-700">⏳ Acompte à régler</button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Cancel */}

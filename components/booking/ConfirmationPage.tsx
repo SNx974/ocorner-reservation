@@ -183,15 +183,27 @@ export function ConfirmationPage({ reservation: r }: ConfirmationPageProps) {
         ) : null}
 
         {status === "pending" && !isDepositPending && (
-          <div className="border-t border-blue-100 bg-blue-50 p-4 flex items-center gap-3">
-            <MapPin className="w-6 h-6 text-blue-600 shrink-0" />
-            <div>
-              <p className="font-semibold text-blue-900">Paiement sur place</p>
-              <p className="text-blue-700 text-sm">
-                Le paiement complet de {formatPrice(r.totalPrice as number)} sera encaissé à votre arrivée.
-              </p>
+          r.paymentType === "online_full" ? (
+            <div className="border-t border-amber-100 bg-amber-50 p-4 flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-900">Paiement en ligne en cours de validation</p>
+                <p className="text-amber-700 text-sm">
+                  Votre paiement de {formatPrice(r.totalPrice as number)} est en cours de confirmation. Vous recevrez un email dès qu'il sera validé.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="border-t border-blue-100 bg-blue-50 p-4 flex items-center gap-3">
+              <MapPin className="w-6 h-6 text-blue-600 shrink-0" />
+              <div>
+                <p className="font-semibold text-blue-900">Paiement sur place</p>
+                <p className="text-blue-700 text-sm">
+                  Le paiement complet de {formatPrice(r.totalPrice as number)} sera encaissé à votre arrivée.
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {/* QR Code */}

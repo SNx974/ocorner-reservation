@@ -573,6 +573,11 @@ export function BookingForm() {
                 <span className="text-lg font-extrabold text-[#c8f135]">{formatPrice(total)}</span>
               </div>
             </div>
+            {selectedFormula && (["foot", "marmaille_foot"].includes(selectedFormula.category) || selectedFormula.name.toLowerCase().includes("foot")) && (
+              <p className="mt-2 text-[12px] text-[#1bbfa8] bg-[#1bbfa8]/10 rounded-lg px-3 py-2">
+                🎁 1h de foot incluse — un terrain vous est réservé automatiquement avec votre anniversaire.
+              </p>
+            )}
           </div>
 
           {/* Promo code */}

@@ -89,6 +89,18 @@ export interface ReservationEmailData {
   qrCode?: string;
   reservationId?: string;
   isBirthday?: boolean;
+  depositPaid?: boolean;
+  fullPaymentPaid?: boolean;
+  // Explicit payment wording chosen by an admin: "paid" | "deposit" | "due"
+  paymentStatusOverride?: "paid" | "deposit" | "due";
+}
+
+// Resolve the payment state used for the email wording
+export function resolvePayState(data: ReservationEmailData): "paid" | "deposit" | "due" {
+  if (data.paymentStatusOverride) return data.paymentStatusOverride;
+  if (data.fullPaymentPaid || data.paymentType === "online_full" || data.totalPrice === 0) return "paid";
+  if (data.depositPaid) return "deposit";
+  return "due";
 }
 
 // ─── Base URL for public assets ──────────────────────────────────────
@@ -153,7 +165,7 @@ export function buildBirthdayEmailHtml(
   data: ReservationEmailData & { depositPaid?: boolean },
   tpl: Record<string, string> = EMAIL_TEMPLATE_DEFAULTS
 ) {
-  const isPaid = data.paymentType === "online_full" || data.totalPrice === 0;
+  const payState = resolvePayState(data);
   const remainingAmount = data.totalPrice - data.depositAmount;
   const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
   const parkName = tpl.email_park_name ?? EMAIL_TEMPLATE_DEFAULTS.email_park_name;
@@ -167,10 +179,15 @@ export function buildBirthdayEmailHtml(
     infoBlocks = JSON.parse(tpl.email_birthday_info_blocks ?? EMAIL_TEMPLATE_DEFAULTS.email_birthday_info_blocks);
   } catch { infoBlocks = []; }
 
-  const paymentBlock = isPaid
+  const paymentBlock = payState === "paid"
     ? `<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:16px 20px;margin:20px 0;">
         <p style="margin:0;font-size:15px;color:#065f46;">✅ <strong>Paiement complet reçu — ${formatPrice(data.totalPrice)}</strong></p>
         <p style="margin:6px 0 0;font-size:13px;color:#047857;">Votre réservation est confirmée. À bientôt !</p>
+      </div>`
+    : payState === "deposit"
+    ? `<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:16px 20px;margin:20px 0;">
+        <p style="margin:0;font-size:15px;color:#1e40af;">✅ <strong>Acompte de ${formatPrice(data.depositAmount)} reçu</strong></p>
+        <p style="margin:6px 0 0;font-size:13px;color:#1d4ed8;">Le solde de <strong>${formatPrice(remainingAmount)}</strong> sera réglé sur place le jour J.</p>
       </div>`
     : `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:16px 20px;margin:20px 0;">
         <p style="margin:0;font-size:15px;color:#92400e;">⏳ <strong>Acompte de ${formatPrice(data.depositAmount)} à régler</strong></p>
@@ -251,7 +268,8 @@ export function buildBirthdayEmailHtml(
 
 // ─── Futsal email ─────────────────────────────────────────────────────
 function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, string> = EMAIL_TEMPLATE_DEFAULTS) {
-  const isPaid = data.paymentType === "online_full" || data.totalPrice === 0;
+  const payState = resolvePayState(data);
+  const isPaid = payState === "paid";
   const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
   const parkName = tpl.email_park_name ?? EMAIL_TEMPLATE_DEFAULTS.email_park_name;
   const subtitle = tpl.email_futsal_header_subtitle ?? EMAIL_TEMPLATE_DEFAULTS.email_futsal_header_subtitle;
@@ -281,7 +299,10 @@ function buildFutsalEmailHtml(data: ReservationEmailData, tpl: Record<string, st
         ${row("Date", formatDate(data.date))}
         ${row("Créneau", data.time)}
         ${row("Total terrain", formatPrice(data.totalPrice), true)}
-        ${row(isPaid ? "Statut paiement" : "Acompte versé", isPaid ? "✅ Payé" : formatPrice(data.depositAmount))}
+        ${row(
+          isPaid ? "Statut paiement" : payState === "deposit" ? "Acompte reçu" : "Acompte à régler",
+          isPaid ? "✅ Payé" : formatPrice(data.depositAmount)
+        )}
       </table>
     </div>
     <div style="text-align:center;margin:20px 0;padding:20px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
