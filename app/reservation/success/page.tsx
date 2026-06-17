@@ -22,6 +22,14 @@ function SuccessContent() {
     let tries = 0;
     const maxTries = 10;
 
+    // Fallback: confirm the Stripe session directly (in case the webhook is slow/absent)
+    if (sessionId) {
+      fetch("/api/reservations/verify-session", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, reference }),
+      }).catch(() => {});
+    }
+
     async function poll() {
       try {
         const res = await fetch(`/api/reservations?reference=${reference}`);

@@ -12,7 +12,7 @@ import {
   ChevronLeft, ChevronRight, Users, User, Mail, Phone, AlertCircle, Tag, X,
   CheckCircle, Info, Loader2,
 } from "lucide-react";
-import { cn, formatPrice, getCategoryLabel } from "@/lib/utils";
+import { cn, formatPrice, getCategoryLabel, birthdayTimeToHours } from "@/lib/utils";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -154,9 +154,14 @@ export function BookingForm() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [previewFormula, setPreviewFormula] = useState<Formula | null>(null);
   const [closedDates, setClosedDates] = useState<string[]>([]);
+  const [timeSlots, setTimeSlots] = useState<Array<{ id: string; time: string }>>([]);
+  const [footAvail, setFootAvail] = useState<Array<{ id: string; hour: number; minute: number; availableCourts: number[] }>>([]);
+  const [footSlotId, setFootSlotId] = useState("");
+  const [footCourt, setFootCourt] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/formulas").then(r => r.json()).then(setFormulas);
+    fetch("/api/timeslots").then(r => r.json()).then(setTimeSlots).catch(() => {});
     fetch("/api/closed-dates?type=birthday").then(r => r.json()).then((data: Array<{ date: string }>) => {
       setClosedDates(data.map(d => d.date));
     }).catch(() => {});
@@ -170,6 +175,27 @@ export function BookingForm() {
   const selectedFormula = formulas.find(f => f.id === form.formulaId);
   const baseTotal = selectedFormula ? selectedFormula.pricePerChild * form.childrenCount : 0;
   const total = promoResult ? promoResult.finalTotal : baseTotal;
+
+  // Birthday-foot: the party includes 1h of foot the client must pick
+  const isFoot = !!selectedFormula && (
+    ["foot", "marmaille_foot"].includes(selectedFormula.category) ||
+    selectedFormula.name.toLowerCase().includes("foot")
+  );
+  const partyTime = timeSlots.find(t => t.id === form.timeSlotId)?.time ?? "";
+  const partyHours = birthdayTimeToHours(partyTime);
+
+  useEffect(() => {
+    if (!isFoot || !form.date || !form.timeSlotId) { setFootAvail([]); setFootSlotId(""); setFootCourt(null); return; }
+    fetch(`/api/futsal/availability?date=${form.date}`)
+      .then(r => r.json())
+      .then(d => {
+        const slots = Array.isArray(d?.slots) ? d.slots : [];
+        setFootAvail(slots.filter((s: { hour: number; availableCourts: number[] }) => partyHours.includes(s.hour) && s.availableCourts.length > 0));
+      })
+      .catch(() => setFootAvail([]));
+    setFootSlotId(""); setFootCourt(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFoot, form.date, form.timeSlotId, partyTime]);
 
   async function validatePromo() {
     if (!promoCode.trim()) return;
@@ -212,6 +238,9 @@ export function BookingForm() {
     if (step === 1) {
       if (!form.date) e.date = "Veuillez choisir une date";
       if (!form.timeSlotId) e.timeSlotId = "Veuillez choisir un créneau";
+      // Foot formulas: require picking the 1h foot session when slots are available
+      if (isFoot && form.timeSlotId && footAvail.length > 0 && (!footSlotId || !footCourt))
+        e.footSlot = "Choisissez votre session foot (1h offerte)";
     }
     if (step === 2) {
       if (form.childrenCount < (selectedFormula?.minChildren ?? 1))
@@ -242,6 +271,9 @@ export function BookingForm() {
         notes: form.notes.trim() || undefined,
         promoCodeId: promoResult?.promoCodeId,
         discountAmount: promoResult?.discountAmount,
+        footSlot: isFoot && footSlotId && footCourt
+          ? { futsalTimeSlotId: footSlotId, courtNumber: footCourt }
+          : undefined,
       };
 
       const res = await fetch("/api/reservations", {
@@ -422,6 +454,38 @@ export function BookingForm() {
           {form.date && form.timeSlotId && (
             <div className="bg-[#1bbfa8]/20 border border-[#1bbfa8]/40 rounded-xl p-3 text-sm text-[#c8f135] font-medium">
               ✅ {format(new Date(form.date + "T12:00:00"), "EEEE d MMMM yyyy", { locale: fr })}
+            </div>
+          )}
+
+          {/* Foot session (1h offered) — client picks a free slot */}
+          {isFoot && form.date && form.timeSlotId && (
+            <div className="rounded-2xl border border-[#1bbfa8]/40 bg-[#1bbfa8]/10 p-4">
+              <p className="text-sm font-bold text-[#1bbfa8] mb-1 flex items-center gap-1.5">🎁 Session foot — 1h offerte</p>
+              <p className="text-[12px] text-white/60 mb-3">Votre formule inclut 1h de foot. Choisissez un créneau disponible pendant votre anniversaire.</p>
+              {footAvail.length === 0 ? (
+                <p className="text-[12px] text-amber-300 bg-amber-500/10 rounded-lg px-3 py-2">
+                  ⚠️ Aucun terrain de foot disponible sur ce créneau. Choisissez une autre date/heure ou contactez-nous — l'anniversaire reste réservable.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {footAvail.flatMap(slot =>
+                    slot.availableCourts.map(c => {
+                      const selected = footSlotId === slot.id && footCourt === c;
+                      return (
+                        <button key={`${slot.id}-${c}`} type="button"
+                          onClick={() => { setFootSlotId(slot.id); setFootCourt(c); }}
+                          className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-all",
+                            selected ? "border-[#1bbfa8] bg-[#1bbfa8] text-white" : "border-white/20 text-white/80 hover:border-[#1bbfa8]/60")}>
+                          {selected ? "✓ " : ""}{slot.hour}h · Terrain {c}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+              {errors.footSlot && (
+                <p className="text-red-400 text-sm mt-2 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{errors.footSlot}</p>
+              )}
             </div>
           )}
 

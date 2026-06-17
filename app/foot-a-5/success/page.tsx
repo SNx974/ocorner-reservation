@@ -36,6 +36,14 @@ function SuccessContent() {
   useEffect(() => {
     if (!reference) { setError("Référence manquante"); setLoading(false); return; }
 
+    // Fallback: confirm the Stripe session directly (in case the webhook is slow/absent)
+    if (sessionId) {
+      fetch("/api/reservations/verify-session", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, reference }),
+      }).catch(() => {});
+    }
+
     // Poll until confirmed (webhook may take a few seconds)
     let tries = 0;
     const maxTries = 10;

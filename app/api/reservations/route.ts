@@ -173,12 +173,16 @@ export async function POST(req: NextRequest) {
       status = "deposit_pending";
     }
 
-    // Birthday-foot: 1h of foot offered → auto-reserve the first free hour+court
-    // in the party window (non-blocking: if nothing is free, staff schedules later).
+    // Birthday-foot: 1h of foot offered. Use the slot the client picked (from the
+    // availability shown in the form); otherwise auto-pick the first free hour+court.
     let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
     if (isFootFormula(formula.category, formula.name)) {
-      const footRow = await allocateOneFootHour({ date: data.date, timeSlotTime: timeSlot.time });
-      if (footRow) footSlots = [footRow];
+      if (body.footSlot?.futsalTimeSlotId && body.footSlot?.courtNumber) {
+        footSlots = [{ futsalTimeSlotId: body.footSlot.futsalTimeSlotId, courtNumber: Number(body.footSlot.courtNumber) }];
+      } else {
+        const footRow = await allocateOneFootHour({ date: data.date, timeSlotTime: timeSlot.time });
+        if (footRow) footSlots = [footRow];
+      }
     }
 
     const reservation = await prisma.reservation.create({
