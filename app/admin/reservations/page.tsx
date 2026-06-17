@@ -66,7 +66,9 @@ function PaymentModal({
 
   const total = r.totalPrice;
   const deposit = r.depositAmount;
-  const remaining = total - deposit;
+  const depositReceived = r.depositPaid || r.fullPaymentPaid;
+  // Amount still owed: 0 if fully paid, total minus deposit if deposit received, else the full total
+  const remaining = r.fullPaymentPaid ? 0 : (r.depositPaid ? total - deposit : total);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -87,14 +89,14 @@ function PaymentModal({
               <>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Acompte</span>
-                  <span className={cn("font-semibold", r.depositPaid ? "text-green-600" : "text-amber-600")}>
-                    {formatPrice(deposit)} {r.depositPaid ? "✅ reçu" : "⏳ en attente"}
+                  <span className={cn("font-semibold", depositReceived ? "text-green-600" : "text-amber-600")}>
+                    {formatPrice(deposit)} {depositReceived ? "✅ reçu" : "⏳ en attente"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Reste à payer</span>
                   <span className="font-bold text-gray-900">
-                    {formatPrice(r.depositPaid ? remaining : total)}
+                    {formatPrice(remaining)}
                   </span>
                 </div>
               </>
@@ -130,7 +132,7 @@ function PaymentModal({
                 <div>
                   <p className="font-semibold text-green-900 text-sm">Payé intégralement</p>
                   <p className="text-xs text-green-700">
-                    {formatPrice(r.depositPaid ? remaining : total)} encaissé — règlement complet
+                    {formatPrice(remaining)} encaissé — règlement complet
                   </p>
                 </div>
               </button>
@@ -175,6 +177,18 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
     });
     setLoading(false);
     onRefresh();
+  }
+
+  async function sendConfirmationMail() {
+    setLoading(true);
+    const res = await fetch("/api/admin/reservations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ id: r.id, action: "send_confirmation" }),
+    });
+    const json = await res.json().catch(() => ({}));
+    setLoading(false);
+    alert(res.ok ? (json.message ?? "Mail de confirmation envoyé ✓") : (json.error ?? "Échec de l'envoi du mail"));
   }
 
   async function deleteReservation() {
@@ -352,6 +366,15 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
                 <Button size="sm" variant="outline" onClick={() => setShowPayModal(true)} disabled={loading}>
                   <Banknote className="w-3.5 h-3.5 mr-1" />
                   Paiement ✓
+                </Button>
+              )}
+
+              {/* Send confirmation email */}
+              {r.clientEmail && r.clientEmail.includes("@") && !r.clientEmail.startsWith("admin+") && (
+                <Button size="sm" variant="outline" onClick={sendConfirmationMail} disabled={loading}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                  <Mail className="w-3.5 h-3.5 mr-1" />
+                  Envoyer le mail
                 </Button>
               )}
 

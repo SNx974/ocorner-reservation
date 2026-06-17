@@ -334,7 +334,10 @@ async function sendAndSave(opts: {
 
 export async function sendConfirmationEmail(data: ReservationEmailData) {
   const tpl = await getTemplateSettings();
-  const isBirthday = data.isBirthday !== false && !data.formulaName.toLowerCase().includes("futsal") && !data.formulaName.toLowerCase().includes("foot");
+  // Respect the explicit isBirthday flag when provided; otherwise infer from the formula name
+  const isBirthday = data.isBirthday !== undefined
+    ? data.isBirthday
+    : (!data.formulaName.toLowerCase().includes("futsal") && !data.formulaName.toLowerCase().includes("foot"));
   const html = isBirthday ? buildBirthdayEmailHtml(data, tpl) : buildFutsalEmailHtml(data, tpl);
   const parkName = tpl.email_park_name ?? "Ocorner";
   const subject = isBirthday

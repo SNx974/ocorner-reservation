@@ -415,7 +415,10 @@ function QuickAddModal({
     customPrice: "",     // override price
     amountPaid: "",      // how much paid at time of booking
     paymentNote: "",
+    customStart: "",     // custom time range start "HH:MM"
+    customEnd: "",       // custom time range end "HH:MM"
   });
+  const [useCustomTime, setUseCustomTime] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -439,9 +442,15 @@ function QuickAddModal({
   const amountPaid = parseFloat(form.amountPaid || "0");
   const remaining = Math.max(0, totalPrice - amountPaid);
 
+  const customTime = useCustomTime && form.customStart && form.customEnd
+    ? `${form.customStart}-${form.customEnd}`
+    : undefined;
+
   async function submit() {
     if (!form.clientName.trim()) { setError("Nom du client requis"); return; }
-    if (!form.formulaId || !form.timeSlotId) { setError("Formule et créneau requis"); return; }
+    if (!form.formulaId) { setError("Formule requise"); return; }
+    if (!customTime && !form.timeSlotId) { setError("Créneau requis (ou horaire personnalisé)"); return; }
+    if (useCustomTime && (!form.customStart || !form.customEnd)) { setError("Heure de début et de fin requises"); return; }
     if (!form.date) { setError("Date requise"); return; }
     setLoading(true); setError("");
     const res = await fetch("/api/admin/reservations", {
@@ -451,6 +460,7 @@ function QuickAddModal({
         type: "birthday",
         clientName: form.clientName, clientEmail: form.clientEmail, clientPhone: form.clientPhone,
         formulaId: form.formulaId, timeSlotId: form.timeSlotId,
+        customTime,
         date: form.date, childrenCount: form.childrenCount,
         notes: [form.notes, form.paymentNote ? `Paiement: ${form.paymentNote}` : ""].filter(Boolean).join(" | "),
         customPrice: form.customPrice ? parseFloat(form.customPrice) : undefined,
@@ -480,11 +490,26 @@ function QuickAddModal({
               <Input type="date" value={form.date} onChange={e => set("date", e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">⏰ Créneau *</label>
-              <select value={form.timeSlotId} onChange={e => set("timeSlotId", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none h-10">
-                {timeSlots.map(s => <option key={s.id} value={s.id}>{s.time}</option>)}
-              </select>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-gray-500">⏰ Créneau *</label>
+                <button type="button" onClick={() => setUseCustomTime(v => !v)}
+                  className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all",
+                    useCustomTime ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}>
+                  {useCustomTime ? "Personnalisé ✓" : "Personnaliser"}
+                </button>
+              </div>
+              {useCustomTime ? (
+                <div className="flex items-center gap-1.5">
+                  <Input type="time" value={form.customStart} onChange={e => set("customStart", e.target.value)} className="h-10" />
+                  <span className="text-gray-400 text-sm">→</span>
+                  <Input type="time" value={form.customEnd} onChange={e => set("customEnd", e.target.value)} className="h-10" />
+                </div>
+              ) : (
+                <select value={form.timeSlotId} onChange={e => set("timeSlotId", e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none h-10">
+                  {timeSlots.map(s => <option key={s.id} value={s.id}>{s.time}</option>)}
+                </select>
+              )}
             </div>
           </div>
 

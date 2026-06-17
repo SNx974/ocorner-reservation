@@ -4,11 +4,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isExpired } from "@/lib/utils";
-import { sendCancellationEmail, sendRescheduleEmail } from "@/lib/email";
+import { sendCancellationEmail, sendRescheduleEmail, sendConfirmationEmail } from "@/lib/email";
 import { allocateFutsalCourts, isFootFormula } from "@/lib/futsal-allocation";
 
 function checkAdminAuth(req: NextRequest): boolean {
   return checkAuth(req.headers.get("x-admin-token")).valid;
+}
+
+// Build + send a confirmation email from a reservation (birthday or foot à 5)
+function sendReservationConfirmation(r: {
+  type: string; clientName: string; clientEmail: string; reference: string; date: Date;
+  formula?: { name: string } | null; timeSlot?: { time: string } | null;
+  futsalTimeSlot?: { hour: number; minute: number } | null;
+  childrenCount?: number; playerCount?: number | null; courtNumber?: number | null;
+  totalPrice: number; depositAmount: number; paymentType: string; status: string; qrCode?: string | null;
+}) {
+  const isFutsal = r.type === "futsal";
+  const time = r.timeSlot?.time
+    ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}h${r.futsalTimeSlot.minute > 0 ? String(r.futsalTimeSlot.minute).padStart(2, "0") : "00"}` : "—");
+  return sendConfirmationEmail({
+    clientName: r.clientName,
+    clientEmail: r.clientEmail,
+    reference: r.reference,
+    formulaName: r.formula?.name ?? (isFutsal ? `Foot à 5 — Terrain ${r.courtNumber ?? ""}`.trim() : "Réservation"),
+    date: r.date,
+    time,
+    childrenCount: isFutsal ? (r.playerCount ?? 0) : (r.childrenCount ?? 0),
+    totalPrice: r.totalPrice,
+    depositAmount: r.depositAmount,
+    paymentType: r.paymentType,
+    status: r.status,
+    qrCode: r.qrCode ?? undefined,
+    isBirthday: !isFutsal,
+  });
+}
+
+// A "real" client email (not the admin placeholder)
+function isRealEmail(email?: string): boolean {
+  return !!email && email.includes("@") && !email.startsWith("admin+");
 }
 
 export async function GET(req: NextRequest) {
@@ -77,10 +110,20 @@ export async function POST(req: NextRequest) {
     const depositAmount = paid < totalPrice ? paid : 0;
     const adminNotes = [notes, paymentNote ? `Paiement: ${paymentNote}` : ""].filter(Boolean).join(" | ");
 
+    // Custom time range (e.g. "14:00-18:00") → reuse or create an INACTIVE TimeSlot
+    // (inactive so it never shows up on the public calendar).
+    let effectiveTimeSlotId = timeSlotId;
+    if (body.customTime && String(body.customTime).trim()) {
+      const t = String(body.customTime).trim();
+      let ts = await prisma.timeSlot.findFirst({ where: { time: t } });
+      if (!ts) ts = await prisma.timeSlot.create({ data: { time: t, isActive: false } });
+      effectiveTimeSlotId = ts.id;
+    }
+
     // Birthday-foot: reserve a futsal court for the whole session
     let footSlots: { futsalTimeSlotId: string; courtNumber: number }[] = [];
     if (isFootFormula(formula?.category, formula?.name)) {
-      const slot = await prisma.timeSlot.findUnique({ where: { id: timeSlotId } });
+      const slot = await prisma.timeSlot.findUnique({ where: { id: effectiveTimeSlotId } });
       if (slot) {
         const alloc = await allocateFutsalCourts({ date, timeSlotTime: slot.time });
         if (!alloc.ok) return NextResponse.json({ error: alloc.error }, { status: 409 });
@@ -93,7 +136,7 @@ export async function POST(req: NextRequest) {
         reference, type: "birthday",
         clientName, clientEmail: clientEmail || `admin+${reference}@ocorner.re`,
         clientPhone: clientPhone || "0000000000",
-        formulaId, timeSlotId,
+        formulaId, timeSlotId: effectiveTimeSlotId,
         date: new Date(date),
         childrenCount: parseInt(childrenCount),
         totalPrice, basePrice: autoPrice,
@@ -109,6 +152,10 @@ export async function POST(req: NextRequest) {
     });
     const qrCode = await generateQRCode(JSON.stringify({ ref: reference, id: reservation.id, type: "birthday" }));
     await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });
+    // Auto-send confirmation if a real client email was provided
+    if (isRealEmail(clientEmail)) {
+      sendReservationConfirmation({ ...reservation, qrCode }).catch(console.error);
+    }
     return NextResponse.json(reservation);
   }
 
@@ -164,6 +211,10 @@ export async function POST(req: NextRequest) {
     });
     const qrCode = await generateQRCode(JSON.stringify({ ref: reference, id: reservation.id, type: "futsal" }));
     await prisma.reservation.update({ where: { id: reservation.id }, data: { qrCode } });
+    // Auto-send confirmation if a real client email was provided
+    if (isRealEmail(clientEmail)) {
+      sendReservationConfirmation({ ...reservation, qrCode }).catch(console.error);
+    }
     return NextResponse.json(reservation);
   }
 
@@ -232,6 +283,16 @@ export async function PATCH(req: NextRequest) {
     case "add_note":
       updateData = { adminNotes: notes };
       break;
+    case "send_confirmation": {
+      if (!reservation.clientEmail || !reservation.clientEmail.includes("@")) {
+        return NextResponse.json({ error: "Aucune adresse email valide pour cette réservation" }, { status: 400 });
+      }
+      const result = await sendReservationConfirmation(reservation);
+      if (result?.status !== "sent") {
+        return NextResponse.json({ error: result?.errorMessage ?? "Échec de l'envoi" }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, message: `Mail envoyé à ${reservation.clientEmail}` });
+    }
     case "reschedule": {
       const { newDate, newTimeSlotId, newFutsalTimeSlotId } = body;
       const oldDate = reservation.date;
