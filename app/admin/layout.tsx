@@ -36,7 +36,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Plannings",
     items: [
       { href: "/admin/planning-anniversaire", icon: PartyPopper, label: "Anniversaire" },
-      { href: "/admin/planning-futsal", icon: Trophy, label: "Futsal" },
+      { href: "/admin/planning-futsal", icon: Trophy, label: "Foot à 5" },
     ],
   },
   {

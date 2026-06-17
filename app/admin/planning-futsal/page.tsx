@@ -688,7 +688,7 @@ export default function FutsalPlanningPage() {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" /> Planning Futsal
+            <Trophy className="w-5 h-5 md:w-6 md:h-6 text-blue-600" /> Planning Foot à 5
           </h1>
           <p className="text-gray-500 text-xs md:text-sm">Vue journalière — 3 terrains</p>
         </div>

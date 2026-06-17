@@ -34,7 +34,7 @@ interface TemplateData {
 const SECTION_TABS = [
   { id: "general", label: "🏷️ Général", icon: Info },
   { id: "birthday", label: "🎂 Anniversaire", icon: Cake },
-  { id: "futsal", label: "⚽ Futsal", icon: Trophy },
+  { id: "futsal", label: "⚽ Foot à 5", icon: Trophy },
   { id: "notifications", label: "🔔 Notifications", icon: Bell },
 ];
 
@@ -53,7 +53,7 @@ function LivePreview({ tpl, blocks, type }: { tpl: TemplateData; blocks: InfoBlo
     : "linear-gradient(135deg,#10b981 0%,#3b82f6 100%)";
 
   const headerEmoji = type === "futsal" ? "⚽🏟️" : type === "cancel" ? "❌" : type === "reminder" ? "⏰" : parkEmoji;
-  const headerTitle = type === "futsal" ? `${parkName} Futsal` : type === "cancel" ? "Réservation annulée" : type === "reminder" ? "Rappel : Acompte en attente" : `${parkName} Réservation`;
+  const headerTitle = type === "futsal" ? `${parkName} Foot à 5` : type === "cancel" ? "Réservation annulée" : type === "reminder" ? "Rappel : Acompte en attente" : `${parkName} Réservation`;
   const headerSub = type === "futsal" ? tpl.email_futsal_header_subtitle : type === "cancel" ? "" : type === "reminder" ? "" : tpl.email_birthday_header_subtitle;
 
   return (
@@ -448,7 +448,7 @@ export default function EmailTemplatePage() {
                 <div className="flex gap-1 flex-wrap justify-end">
                   {([
                     { v: "birthday", l: "🎂 Anniv." },
-                    { v: "futsal", l: "⚽ Futsal" },
+                    { v: "futsal", l: "⚽ Foot à 5" },
                     { v: "reminder", l: "⏰ Rappel" },
                     { v: "cancel", l: "❌ Annulation" },
                   ] as const).map(({ v, l }) => (

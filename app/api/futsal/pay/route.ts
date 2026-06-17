@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
         clientName: participant.name,
         clientEmail: participant.email!,
         reference: r.reference,
-        formulaName: `Futsal — Terrain ${r.courtNumber} — Part équipe`,
+        formulaName: `Foot à 5 — Terrain ${r.courtNumber} — Part équipe`,
         date: r.date,
         time: slotLabel,
         childrenCount: 1,

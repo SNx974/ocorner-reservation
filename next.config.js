@@ -55,6 +55,14 @@ const nextConfig = {
       },
     ];
   },
+
+  // Redirige les anciennes URLs /futsal vers /foot-a-5 (liens, QR codes, favoris)
+  async redirects() {
+    return [
+      { source: "/futsal", destination: "/foot-a-5", permanent: true },
+      { source: "/futsal/:path*", destination: "/foot-a-5/:path*", permanent: true },
+    ];
+  },
 };
 
 module.exports = nextConfig;

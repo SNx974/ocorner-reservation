@@ -150,7 +150,7 @@ function ReservationModal({ r, onClose }: { r: Reservation; onClose: () => void 
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">Formule</p>
-              <p className="font-semibold text-gray-800">{r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")}</p>
+              <p className="font-semibold text-gray-800">{r.formula?.name ?? (r.type === "futsal" ? `Foot à 5 — Terrain ${r.courtNumber}` : "—")}</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3">
               <p className="text-xs text-gray-400 mb-0.5">Créneau</p>
@@ -354,7 +354,7 @@ function TodaySection({ reservations }: { reservations: Reservation[] }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-blue-50">
           <h2 className="font-bold text-blue-900 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-blue-600" />
-            ⚽ Futsal aujourd'hui
+            ⚽ Foot à 5 aujourd'hui
             <span className="text-sm font-normal text-blue-600">({futsal.length})</span>
           </h2>
           <Link href="/admin/planning-futsal">

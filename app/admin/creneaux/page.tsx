@@ -15,7 +15,7 @@ interface VacationPeriod { id: string; label: string; startDate: string; endDate
 const TYPE_LABELS: Record<string, string> = {
   all: "Tout (anniv + futsal)",
   birthday: "Anniversaire seulement",
-  futsal: "Futsal seulement",
+  futsal: "Foot à 5 seulement",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -172,7 +172,7 @@ export default function CreneauxPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestion des créneaux</h1>
-          <p className="text-gray-500 text-sm">Anniversaire, Futsal et jours fermés</p>
+          <p className="text-gray-500 text-sm">Anniversaire, Foot à 5 et jours fermés</p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
@@ -192,7 +192,7 @@ export default function CreneauxPage() {
             </h2>
             <p className="text-gray-400 text-xs mb-4">
               Durant ces périodes, les horaires &quot;vacances&quot; s&apos;appliquent pour la réservation futsal côté client.
-              <br/>Configurez les heures dans <strong>Paramètres → Horaires Futsal selon période</strong>.
+              <br/>Configurez les heures dans <strong>Paramètres → Horaires Foot à 5 selon période</strong>.
             </p>
 
             {/* Add form */}
@@ -278,7 +278,7 @@ export default function CreneauxPage() {
               >
                 <option value="all">Tout fermer</option>
                 <option value="birthday">Anniversaire only</option>
-                <option value="futsal">Futsal only</option>
+                <option value="futsal">Foot à 5 only</option>
               </select>
               <Button
                 onClick={addClosedDate}
@@ -371,7 +371,7 @@ export default function CreneauxPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-blue-600" /> ⚽ Créneaux Futsal
+                <Trophy className="w-5 h-5 text-blue-600" /> ⚽ Créneaux Foot à 5
               </h2>
               <button
                 type="button"
@@ -465,7 +465,7 @@ export default function CreneauxPage() {
                     })}
                   </div>
                   <p className="text-xs text-gray-400 mt-3">
-                    Pour modifier les prix → <strong>Paramètres → Tarification Futsal</strong>
+                    Pour modifier les prix → <strong>Paramètres → Tarification Foot à 5</strong>
                   </p>
                 </>
               );

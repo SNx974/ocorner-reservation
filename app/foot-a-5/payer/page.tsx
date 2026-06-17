@@ -37,7 +37,7 @@ export default function FutsalPayerPage() {
     <div className="min-h-screen bg-[#0a1628] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/futsal" className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+          <Link href="/foot-a-5" className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <h1 className="text-white font-bold text-xl">Je paye ma place</h1>

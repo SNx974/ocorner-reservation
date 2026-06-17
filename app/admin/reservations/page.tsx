@@ -240,7 +240,7 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
               )}
             </div>
             <p className="text-sm text-gray-500 mt-0.5 truncate">
-              {r.formula?.name ?? (r.type === "futsal" ? `Futsal — Terrain ${r.courtNumber}` : "—")} · {formatDate(r.date)} {r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}h${r.futsalTimeSlot.minute ? String(r.futsalTimeSlot.minute).padStart(2,"0") : "00"}` : "")} · {r.type === "futsal" ? `${r.playerCount} joueurs` : `${r.childrenCount} enfants`}
+              {r.formula?.name ?? (r.type === "futsal" ? `Foot à 5 — Terrain ${r.courtNumber}` : "—")} · {formatDate(r.date)} {r.timeSlot?.time ?? (r.futsalTimeSlot ? `${r.futsalTimeSlot.hour}h${r.futsalTimeSlot.minute ? String(r.futsalTimeSlot.minute).padStart(2,"0") : "00"}` : "")} · {r.type === "futsal" ? `${r.playerCount} joueurs` : `${r.childrenCount} enfants`}
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 ml-2">

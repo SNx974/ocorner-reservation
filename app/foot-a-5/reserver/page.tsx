@@ -321,7 +321,7 @@ export default function FutsalReserverPage() {
             </div>
 
             <div className="flex gap-3">
-              <Link href="/futsal" className="flex-1">
+              <Link href="/foot-a-5" className="flex-1">
                 <Button variant="outline" className="w-full">Retour Foot à 5</Button>
               </Link>
               <Link href={`/partage/${r.shareToken}`} className="flex-1">
@@ -339,7 +339,7 @@ export default function FutsalReserverPage() {
       <div className="max-w-xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Link href="/futsal" className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
+          <Link href="/foot-a-5" className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div>

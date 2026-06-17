@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         amount: formatAmountForStripe(amountDue),
         currency: "eur",
         metadata: { reference: reservation.reference, participant: data.name },
-        description: `Part Futsal ${reservation.reference} — ${data.name}`,
+        description: `Part Foot à 5 ${reservation.reference} — ${data.name}`,
       });
       stripePaymentIntentId = intent.id;
       stripeClientSecret = intent.client_secret!;

@@ -119,7 +119,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-gray-900">Lien invalide</h2>
           <p className="text-gray-500 text-sm mt-1">{error}</p>
-          <Link href="/futsal"><Button className="mt-4">Retour Futsal</Button></Link>
+          <Link href="/foot-a-5"><Button className="mt-4">Retour Foot à 5</Button></Link>
         </div>
       </div>
     );
@@ -139,7 +139,7 @@ export default function PartagePage({ params }: { params: { token: string } }) {
           <p className="text-gray-500 text-sm mt-2">
             Cette réservation a été payée intégralement par l'organisateur. La gestion de groupe n'est pas nécessaire.
           </p>
-          <Link href="/futsal"><Button className="mt-5 w-full bg-blue-600 hover:bg-blue-700">Retour Foot à 5</Button></Link>
+          <Link href="/foot-a-5"><Button className="mt-5 w-full bg-blue-600 hover:bg-blue-700">Retour Foot à 5</Button></Link>
         </div>
       </div>
     );
@@ -193,8 +193,8 @@ export default function PartagePage({ params }: { params: { token: string } }) {
               📧 Un email de confirmation a été envoyé à <strong>{joinEmail}</strong>
             </p>
           )}
-          <Link href="/futsal">
-            <Button variant="outline" className="w-full">Retour Futsal</Button>
+          <Link href="/foot-a-5">
+            <Button variant="outline" className="w-full">Retour Foot à 5</Button>
           </Link>
         </div>
       </div>

@@ -73,8 +73,8 @@ async function createCheckoutSession(
     metadata,
     // Description shown in the Stripe payments list (on the underlying PaymentIntent)
     ...(piDescription ? { payment_intent_data: { description: piDescription } } : {}),
-    success_url: `${baseUrl}/futsal/success?reference=${reference}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/futsal/reserver`,
+    success_url: `${baseUrl}/foot-a-5/success?reference=${reference}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/foot-a-5/reserver`,
     locale: "fr",
     ...(customerId ? { customer: customerId } : { customer_email: metadata.clientEmail }),
   });
@@ -235,8 +235,8 @@ export async function POST(req: NextRequest) {
     } else if (!IS_DEMO) {
       // Real Stripe: create Checkout Session
       const description = (data.paymentType === "online_full"
-        ? `Futsal ${slotsLabel} – ${data.playerCount} joueurs`
-        : `Acompte Futsal ${slotsLabel}`).slice(0, 240);
+        ? `Foot à 5 ${slotsLabel} – ${data.playerCount} joueurs`
+        : `Acompte Foot à 5 ${slotsLabel}`).slice(0, 240);
       // Description shown in the Stripe payments list: "Nom — Terrain X — Date — Réf"
       const dateLabel = new Date(data.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
       const piDescription = (`${data.clientName} — Terrain ${courtsList} — ${dateLabel} — ${reference}`).slice(0, 240);
@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
       clientName: reservation.clientName,
       clientEmail: reservation.clientEmail,
       reference,
-      formulaName: `Futsal — Terrain ${courtsList} — ${data.playerCount} joueurs`,
+      formulaName: `Foot à 5 — Terrain ${courtsList} — ${data.playerCount} joueurs`,
       date: reservation.date,
       time: slotsLabel,
       childrenCount: data.playerCount,

@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ocorner Réservation — Anniversaires & Futsal",
+  title: "Ocorner Réservation — Anniversaires & Foot à 5",
   description: "Réservez votre anniversaire ou votre terrain de futsal. Formules Marmaille Parc, Marmaille + Foot, et sessions futsal.",
 };
 

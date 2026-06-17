@@ -282,7 +282,7 @@ export default function SettingsPage() {
           </Section>
 
           {/* Futsal pricing */}
-          <Section title="Tarification Futsal" icon={Clock}>
+          <Section title="Tarification Foot à 5" icon={Clock}>
             <p className="text-sm text-gray-500 mb-4">
               Définissez deux niveaux de prix selon l'heure du créneau (heures creuses vs heures de pointe).
             </p>
@@ -324,9 +324,9 @@ export default function SettingsPage() {
           </Section>
 
           {/* Futsal schedule by period */}
-          <Section title="Horaires d'ouverture Futsal" icon={Clock}>
+          <Section title="Horaires d'ouverture Foot à 5" icon={Clock}>
             <p className="text-sm text-gray-500 mb-5">
-              Définissez les jours et heures d&apos;ouverture du Futsal pour chaque période.<br/>
+              Définissez les jours et heures d&apos;ouverture du Foot à 5 pour chaque période.<br/>
               <span className="text-gray-400 text-xs">L&apos;admin peut toujours réserver en dehors de ces plages.</span>
             </p>
 

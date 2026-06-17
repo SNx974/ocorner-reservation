@@ -82,7 +82,7 @@ function SuccessContent() {
         <div className="bg-white rounded-2xl p-10 text-center max-w-sm w-full mx-4">
           <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
           <p className="font-semibold text-gray-900">{error ?? "Réservation introuvable"}</p>
-          <Link href="/futsal" className="mt-4 inline-block">
+          <Link href="/foot-a-5" className="mt-4 inline-block">
             <Button variant="outline">Retour Foot à 5</Button>
           </Link>
         </div>
@@ -180,7 +180,7 @@ function SuccessContent() {
           )}
 
           <div className="flex gap-3">
-            <Link href="/futsal" className={isDeposit ? "flex-1" : "w-full"}>
+            <Link href="/foot-a-5" className={isDeposit ? "flex-1" : "w-full"}>
               <Button variant="outline" className="w-full">Retour Foot à 5</Button>
             </Link>
             {isDeposit && (

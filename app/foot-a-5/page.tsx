@@ -26,7 +26,7 @@ export default function FutsalPage() {
       {/* CTAs */}
       <div className="px-6 max-w-lg mx-auto space-y-4 pb-12">
         {/* Book */}
-        <Link href="/futsal/reserver"
+        <Link href="/foot-a-5/reserver"
           className="flex items-center justify-between bg-white rounded-2xl p-5 shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all group">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ background: "#1bbfa820" }}>
@@ -41,7 +41,7 @@ export default function FutsalPage() {
         </Link>
 
         {/* Pay my spot */}
-        <Link href="/futsal/payer"
+        <Link href="/foot-a-5/payer"
           className="flex items-center justify-between backdrop-blur-sm border rounded-2xl p-5 hover:bg-white/5 transition-all group" style={{ borderColor: "#1bbfa840", background: "#1bbfa810" }}>
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">

@@ -245,7 +245,7 @@ export async function PATCH(req: NextRequest) {
         clientName: reservation.clientName,
         clientEmail: reservation.clientEmail,
         reference: reservation.reference,
-        formulaName: reservation.formula?.name ?? "Futsal",
+        formulaName: reservation.formula?.name ?? "Foot à 5",
         date: reservation.date,
         time: reservation.timeSlot?.time ?? `${reservation.futsalTimeSlot?.hour ?? 0}:00`,
         childrenCount: reservation.childrenCount,
