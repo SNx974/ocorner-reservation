@@ -135,10 +135,12 @@ export async function POST(req: NextRequest) {
       fullPaymentPaid = true;
     }
 
+    // Both "pay in full" and "deposit" are collected online via Stripe Checkout
+    // (deposit = the deposit amount now, balance on site).
     const needsOnlinePayment =
       totalPrice > 0 && (
         data.paymentType === "online_full" ||
-        (data.paymentType === "onsite_deposit" && data.depositPaymentMethod === "online")
+        data.paymentType === "onsite_deposit"
       );
 
     if (!IS_DEMO && needsOnlinePayment) {
