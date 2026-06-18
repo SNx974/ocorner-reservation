@@ -57,6 +57,8 @@ function FutsalModal({
   const [futsalSlotsForReschedule, setFutsalSlotsForReschedule] = useState<FutsalSlot[]>([]);
   const [rescheduling, setRescheduling] = useState(false);
 
+  const { role } = useAdmin();
+  const isAdmin = role === "admin";
   const isBdayFoot = r.type === "birthday";
   const cfg = courtConfig[(r.courtNumber ?? 1) - 1] ?? courtConfig[0];
   const remaining = r.totalPrice - (r.depositPaid ? r.depositAmount : 0);
@@ -261,7 +263,7 @@ function FutsalModal({
           </div>
 
           {/* Payment actions */}
-          {!r.fullPaymentPaid && r.status === "confirmed" && (
+          {isAdmin && !r.fullPaymentPaid && r.status === "confirmed" && (
             <div className="space-y-2 pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-500 uppercase">Enregistrer un paiement</p>
               {/* Method selector */}
@@ -298,7 +300,7 @@ function FutsalModal({
           )}
 
           {/* Reschedule */}
-          {r.status === "confirmed" && !isBdayFoot && (
+          {isAdmin && r.status === "confirmed" && !isBdayFoot && (
             <div className="pt-2 border-t border-gray-100">
               {!showReschedule ? (
                 <button onClick={() => { setShowReschedule(true); loadSlotsForDate(r.date.slice(0, 10)); }}
@@ -345,7 +347,8 @@ function FutsalModal({
             </div>
           )}
 
-          {/* Actions */}
+          {/* Actions — admins only */}
+          {isAdmin && (
           <div className="flex gap-2 pt-2 border-t border-gray-100">
             {r.status === "confirmed" && (
               <button onClick={() => patch("cancel")} disabled={saving}
@@ -361,6 +364,7 @@ function FutsalModal({
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

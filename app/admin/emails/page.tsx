@@ -47,7 +47,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function EmailsPage() {
-  const { token } = useAdmin();
+  const { token, role } = useAdmin();
+  const isAdmin = role === "admin";
   const [emails, setEmails] = useState<EmailSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -156,9 +157,11 @@ export default function EmailsPage() {
           <p className="text-gray-500 text-sm mt-0.5">{total} email{total !== 1 ? "s" : ""} au total</p>
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => setShowTestModal(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
-            <FlaskConical className="w-4 h-4" /> Envoyer un mail de test
-          </Button>
+          {isAdmin && (
+            <Button size="sm" onClick={() => setShowTestModal(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+              <FlaskConical className="w-4 h-4" /> Envoyer un mail de test
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={load} className="gap-2">
             <RefreshCw className="w-4 h-4" /> Actualiser
           </Button>
@@ -284,13 +287,13 @@ export default function EmailsPage() {
                   className="p-2 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
                   <Eye className="w-4 h-4" />
                 </button>
-                <button onClick={() => resend(email.id)} disabled={resending === email.id}
+                {isAdmin && <button onClick={() => resend(email.id)} disabled={resending === email.id}
                   title="Renvoyer"
                   className="p-2 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors">
                   {resending === email.id
                     ? <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
                     : <Send className="w-4 h-4" />}
-                </button>
+                </button>}
               </div>
             </div>
           );
@@ -339,12 +342,12 @@ export default function EmailsPage() {
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
                       🖨️ Imprimer
                     </button>
-                    <button onClick={() => resend(preview.id)}
+                    {isAdmin && <button onClick={() => resend(preview.id)}
                       disabled={resending === preview.id}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition-colors">
                       <Send className="w-3.5 h-3.5" />
                       {resending === preview.id ? "Envoi..." : "Renvoyer"}
-                    </button>
+                    </button>}
                     <button onClick={() => setPreview(null)}
                       className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors">
                       <X className="w-5 h-5" />

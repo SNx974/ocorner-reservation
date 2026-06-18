@@ -68,6 +68,8 @@ function ReservationModal({
   const remaining = r.totalPrice - (r.depositPaid ? r.depositAmount : 0) - (r.fullPaymentPaid ? r.totalPrice : 0);
   const actualRemaining = r.fullPaymentPaid ? 0 : r.depositPaid ? (r.totalPrice - r.depositAmount) : r.totalPrice;
 
+  const { role } = useAdmin();
+  const isAdmin = role === "admin";
   const [editMode, setEditMode] = useState(false);
   const [adminNotes, setAdminNotes] = useState(r.adminNotes ?? "");
   const [amountPaid, setAmountPaid] = useState("");
@@ -233,7 +235,7 @@ function ReservationModal({
               </div>
 
               {/* Quick payment actions */}
-              {!r.fullPaymentPaid && r.status !== "cancelled" && (
+              {isAdmin && !r.fullPaymentPaid && r.status !== "cancelled" && (
                 <div className="border-t pt-3 mt-3 space-y-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase">Enregistrer un paiement</p>
                   <div className="flex gap-2">
@@ -310,10 +312,12 @@ function ReservationModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold text-gray-500 uppercase">Notes admin</p>
-              <button onClick={() => setEditMode(!editMode)}
-                className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
-                <Edit2 className="w-3 h-3" /> {editMode ? "Annuler" : "Modifier"}
-              </button>
+              {isAdmin && (
+                <button onClick={() => setEditMode(!editMode)}
+                  className="text-xs text-emerald-600 hover:underline flex items-center gap-1">
+                  <Edit2 className="w-3 h-3" /> {editMode ? "Annuler" : "Modifier"}
+                </button>
+              )}
             </div>
             {editMode ? (
               <div className="space-y-2">
@@ -332,7 +336,7 @@ function ReservationModal({
           </div>
 
           {/* Reschedule */}
-          {r.status === "confirmed" && (
+          {isAdmin && r.status === "confirmed" && (
             <div className="pt-2 border-t border-gray-100">
               {!showReschedule ? (
                 <button onClick={() => { setShowReschedule(true); loadTimeSlots(); }}
@@ -377,7 +381,7 @@ function ReservationModal({
           )}
 
           {/* Status actions */}
-          {r.status !== "cancelled" && (
+          {isAdmin && r.status !== "cancelled" && (
             <div className="flex gap-2 pt-2 border-t border-gray-100">
               {r.status !== "confirmed" && (
                 <Button size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-700 gap-1"
