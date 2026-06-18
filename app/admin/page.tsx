@@ -551,7 +551,8 @@ function WeeklyPlanning({ reservations, token, onReload }: { reservations: Reser
                 </td>
                 {days.map(day => {
                   const dayStr = format(day, "yyyy-MM-dd");
-                  const cell = grouped[dayStr]?.[slot] ?? [];
+                  // Hide cancelled/expired from the weekly planning (visual only)
+                  const cell = (grouped[dayStr]?.[slot] ?? []).filter(r => r.status !== "cancelled" && r.status !== "expired");
                   const confirmedCount = cell.filter(r => r.status === "confirmed").length;
                   const pendingCount = cell.filter(r => ["pending", "deposit_pending"].includes(r.status)).length;
 
