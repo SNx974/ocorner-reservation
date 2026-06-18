@@ -446,6 +446,48 @@ export async function sendBirthdayChildrenConfirmEmail(data: ReservationEmailDat
   });
 }
 
+export interface EventEmailData {
+  clientName: string; clientEmail: string; reference: string;
+  eventTitle: string; eventDate: Date | string; seats: number; total: number;
+  priceNote?: string | null; qrCode?: string; reservationId?: string;
+}
+
+export async function sendEventConfirmationEmail(data: EventEmailData) {
+  const tpl = await getTemplateSettings();
+  const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;
+  const parkName = tpl.email_park_name ?? "Ocorner";
+
+  const html = baseLayout(`
+<div style="background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 32px rgba(0,0,0,0.08);">
+  <div style="background:#0a1628;padding:28px 32px;text-align:center;">
+    <div style="font-size:40px;">🎟️</div>
+    <h1 style="margin:8px 0 0;color:white;font-size:22px;">Votre place est réservée !</h1>
+    <p style="margin:6px 0 0;color:#c8f135;font-size:14px;font-weight:700;">${data.eventTitle}</p>
+  </div>
+  <div style="padding:32px;">
+    <p style="font-size:16px;color:#1e293b;">Bonjour <strong>${data.clientName}</strong>,</p>
+    <p style="font-size:14px;color:#475569;line-height:1.6;">Votre réservation pour <strong>${data.eventTitle}</strong> est confirmée. Voici le récapitulatif :</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+      ${row("Référence", data.reference)}
+      ${row("Événement", data.eventTitle)}
+      ${row("Date", formatDate(data.eventDate))}
+      ${row("Places", String(data.seats))}
+      ${row("Montant réglé", formatPrice(data.total), true)}
+    </table>
+    ${data.priceNote ? `<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:14px 18px;margin:16px 0;">
+      <p style="margin:0;font-size:13px;color:#065f46;">💡 ${data.priceNote}</p>
+    </div>` : ""}
+    <div style="text-align:center;margin:20px 0;padding:18px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+      <p style="margin:0 0 6px;font-size:13px;color:#64748b;font-weight:600;">🎟️ Référence à présenter à l'accueil</p>
+      <p style="margin:0;font-family:monospace;font-size:18px;font-weight:bold;color:#1e293b;letter-spacing:2px;">${data.reference}</p>
+    </div>
+    <p style="font-size:13px;color:#94a3b8;">À très bientôt !<br/>L'équipe ${parkName}</p>
+  </div>
+</div>`, `Réservation ${data.reference} — ${data.eventTitle}`, phone);
+
+  return sendAndSave({ to: data.clientEmail, subject: `🎟️ Votre place — ${data.eventTitle}`, html, type: "event", reference: data.reference, reservationId: data.reservationId });
+}
+
 export async function sendCancellationEmail(data: ReservationEmailData) {
   const tpl = await getTemplateSettings();
   const phone = tpl.email_phone ?? EMAIL_TEMPLATE_DEFAULTS.email_phone;

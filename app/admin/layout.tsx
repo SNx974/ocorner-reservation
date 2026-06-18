@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   LayoutDashboard, CalendarDays, Settings, LogOut,
   Menu, X, ChevronRight, Tag, Trophy, Clock, Utensils,
-  Mail, PartyPopper, Palette, Users,
+  Mail, PartyPopper, Palette, Users, Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminContext, AdminRole } from "./admin-context";
@@ -50,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Configuration",
     adminOnly: true,
     items: [
+      { href: "/admin/events", icon: Ticket, label: "Événements" },
       { href: "/admin/creneaux", icon: Clock, label: "Créneaux" },
       { href: "/admin/formules", icon: Utensils, label: "Formules & Tarifs" },
       { href: "/admin/promo", icon: Tag, label: "Codes promo" },

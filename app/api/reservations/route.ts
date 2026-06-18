@@ -266,7 +266,7 @@ export async function GET(req: NextRequest) {
 
   const reservation = await prisma.reservation.findUnique({
     where: { reference },
-    include: { formula: true, timeSlot: true },
+    include: { formula: true, timeSlot: true, event: true },
   });
   if (!reservation) return NextResponse.json({ error: "Réservation introuvable" }, { status: 404 });
 

@@ -71,6 +71,10 @@ model Reservation {
   // Futsal cart: multiple (slot + court) lines per reservation
   futsalSlots      FutsalReservationSlot[]
 
+  // Event fields (type = "event"); seats stored in playerCount
+  eventId          String?
+  event            Event?      @relation(fields: [eventId], references: [id])
+
   date            DateTime
   totalPrice      Float
   basePrice       Float       @default(0)
@@ -143,6 +147,23 @@ model FutsalTimeSlot {
   createdAt    DateTime      @default(now())
   reservations Reservation[]
   reservationSlots FutsalReservationSlot[]
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  description String        @db.Text
+  price       Float         // unit price per seat
+  priceNote   String?       // e.g. "Déduit de la consommation à l'arrivée"
+  eventDate   DateTime
+  capacity    Int?          // total seats; null = unlimited
+  imageUrl    String?       // optional banner image
+  accentColor String?       // optional accent color (hex) for the public page
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  reservations Reservation[]
 }
 
 model FutsalReservationSlot {
