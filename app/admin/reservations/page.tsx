@@ -164,6 +164,8 @@ function PaymentModal({
 
 // ── Carte réservation ──────────────────────────────────────────────
 function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: string; onRefresh: () => void }) {
+  const { role } = useAdmin();
+  const isAdmin = role === "admin";
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
@@ -347,7 +349,8 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
               </div>
             )}
 
-            {/* Action buttons */}
+            {/* Action buttons — admins only (moderators are read-only) */}
+            {isAdmin && (
             <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
               {/* Confirm */}
               {!isConfirmed && !isCancelled && (
@@ -419,6 +422,7 @@ function ReservationCard({ r, token, onRefresh }: { r: Reservation; token: strin
                 </Button>
               )}
             </div>
+            )}
           </div>
         )}
       </div>

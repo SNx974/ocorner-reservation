@@ -8,7 +8,10 @@ import { sendCancellationEmail, sendRescheduleEmail, sendConfirmationEmail } fro
 import { allocateOneFootHour, isFootFormula } from "@/lib/futsal-allocation";
 
 function checkAdminAuth(req: NextRequest): boolean {
-  return checkAuth(req.headers.get("x-admin-token")).valid;
+  const a = checkAuth(req.headers.get("x-admin-token"));
+  if (!a.valid) return false;
+  if (req.method !== "GET" && a.role !== "admin") return false; // moderators: read-only
+  return true;
 }
 
 // Build + send a confirmation email from a reservation (birthday or foot à 5)

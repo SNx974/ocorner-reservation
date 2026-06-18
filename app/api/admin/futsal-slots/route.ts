@@ -5,7 +5,10 @@ import { checkAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function auth(req: NextRequest) {
-  return checkAuth(req.headers.get("x-admin-token")).valid;
+  const a = checkAuth(req.headers.get("x-admin-token"));
+  if (!a.valid) return false;
+  if (req.method !== "GET" && a.role !== "admin") return false; // moderators: read-only
+  return true;
 }
 
 export async function GET(req: NextRequest) {

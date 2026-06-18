@@ -577,7 +577,8 @@ function QuickAddModal({
 
 // ── Main page ────────────────────────────────────────────────────────
 export default function FutsalPlanningPage() {
-  const { token } = useAdmin();
+  const { token, role } = useAdmin();
+  const isAdmin = role === "admin";
   const [reservations, setReservations] = useState<FutsalRes[]>([]);
   const [futsalSlots, setFutsalSlots] = useState<FutsalSlot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -846,7 +847,7 @@ export default function FutsalPlanningPage() {
                               </p>
                             )}
                           </button>
-                        ) : (
+                        ) : isAdmin ? (
                           <button
                             onClick={() => setQuickAdd({ date: selectedDate, hour: slot.hour, minute: slot.minute, court })}
                             className={cn(
@@ -856,6 +857,8 @@ export default function FutsalPlanningPage() {
                             )}>
                             <Plus className={cn("w-5 h-5 text-gray-300 group-hover:text-gray-500")} />
                           </button>
+                        ) : (
+                          <div className="w-full h-[72px]" />
                         )}
                       </div>
                     );

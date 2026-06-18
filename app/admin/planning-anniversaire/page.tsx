@@ -679,7 +679,8 @@ function QuickAddModal({
 
 // ─── Main page ───────────────────────────────────────────────────────
 export default function PlanningAnniversairePage() {
-  const { token } = useAdmin();
+  const { token, role } = useAdmin();
+  const isAdmin = role === "admin";
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -769,10 +770,10 @@ export default function PlanningAnniversairePage() {
               📋 Liste
             </button>
           </div>
-          <Button onClick={() => setQuickAdd({ date: format(new Date(), "yyyy-MM-dd"), slot: "09:00-12:00" })}
+          {isAdmin && <Button onClick={() => setQuickAdd({ date: format(new Date(), "yyyy-MM-dd"), slot: "09:00-12:00" })}
             className="gap-2">
             <Plus className="w-4 h-4" /> Ajouter
-          </Button>
+          </Button>}
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </Button>
@@ -908,12 +909,14 @@ export default function PlanningAnniversairePage() {
                                 </button>
                               );
                             })}
-                            {/* Add button */}
+                            {/* Add button — admins only */}
+                            {isAdmin && (
                             <button
                               onClick={() => setQuickAdd({ date: dayStr, slot })}
                               className="w-full h-8 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:border-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
                               <Plus className="w-3.5 h-3.5" />
                             </button>
+                            )}
                           </div>
                         </td>
                       );

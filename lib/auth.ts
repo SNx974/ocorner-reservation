@@ -75,3 +75,9 @@ export function requireAdmin(token: string | null): boolean {
   const auth = checkAuth(token);
   return auth.valid && auth.role === "admin";
 }
+
+// Write access = admin only. Moderators are read-only (consultation).
+export function requireWrite(token: string | null): boolean {
+  const auth = checkAuth(token);
+  return auth.valid && auth.role === "admin";
+}

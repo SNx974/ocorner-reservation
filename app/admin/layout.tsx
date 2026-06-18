@@ -214,6 +214,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* ── Main ── */}
         <main className="flex-1 min-w-0 overflow-x-auto pt-14 md:pt-0">
+          {token && !isAdmin && (
+            <div className="bg-blue-50 border-b border-blue-200 text-blue-800 text-sm px-4 py-2 flex items-center gap-2">
+              <span>👁️</span>
+              <span><strong>Mode consultation</strong> — votre compte modérateur permet uniquement de consulter. Les modifications sont réservées aux administrateurs.</span>
+            </div>
+          )}
           {children}
         </main>
       </div>
