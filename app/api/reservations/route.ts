@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     }
 
     const totalPrice = Math.max(0, basePrice - appliedDiscountAmount);
-    const depositAmount = calculateDeposit(totalPrice, depositPct, depositMin);
+    const depositAmount = totalPrice === 0 ? 0 : calculateDeposit(totalPrice, depositPct, depositMin);
     const reference = generateReference();
     const expiresAt = calculateExpiryDate(expiryHours);
 

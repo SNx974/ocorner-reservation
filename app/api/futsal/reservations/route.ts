@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
     }
 
     const totalPrice = Math.max(0, basePrice - appliedDiscount);
-    const depositAmount = calculateDeposit(totalPrice, depositPct, depositMin);
+    const depositAmount = totalPrice === 0 ? 0 : calculateDeposit(totalPrice, depositPct, depositMin);
     const reference = generateReference();
     const expiresAt = calculateExpiryDate(expiryHours);
     const shareToken = crypto.randomUUID();
