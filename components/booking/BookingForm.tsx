@@ -13,6 +13,7 @@ import {
   CheckCircle, Info, Loader2,
 } from "lucide-react";
 import { cn, formatPrice, getCategoryLabel, birthdayTimeToHours } from "@/lib/utils";
+import { ConsentCheckbox } from "@/components/legal/ConsentCheckbox";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -158,6 +159,7 @@ export function BookingForm() {
   const [footAvail, setFootAvail] = useState<Array<{ id: string; hour: number; minute: number; availableCourts: number[] }>>([]);
   const [footSlotId, setFootSlotId] = useState("");
   const [footCourt, setFootCourt] = useState<number | null>(null);
+  const [consent, setConsent] = useState(false);
 
   useEffect(() => {
     fetch("/api/formulas").then(r => r.json()).then(setFormulas);
@@ -248,6 +250,7 @@ export function BookingForm() {
       if (form.clientName.trim().length < 2) e.clientName = "Nom requis (min. 2 caractères)";
       if (!form.clientEmail.includes("@")) e.clientEmail = "Email invalide";
       if (form.clientPhone.trim().length < 8) e.clientPhone = "Téléphone invalide";
+      if (!consent) e.consent = "Vous devez accepter les conditions générales de vente";
     }
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setStep(s => s + 1);
@@ -595,6 +598,8 @@ export function BookingForm() {
               paymentType={form.paymentType}
               discountAmount={promoResult?.discountAmount} />
           )}
+
+          <ConsentCheckbox checked={consent} onChange={setConsent} error={errors.consent} dark />
 
           <div className="flex gap-3">
             <Button type="button" variant="outline" onClick={() => setStep(1)} className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white">

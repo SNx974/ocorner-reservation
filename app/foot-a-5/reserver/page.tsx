@@ -8,6 +8,7 @@ import {
   Calendar, Clock, Tag, X, Share2, Copy, CheckCircle,
 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
+import { ConsentCheckbox } from "@/components/legal/ConsentCheckbox";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Link from "next/link";
@@ -116,6 +117,7 @@ export default function FutsalReserverPage() {
   const [clientEmail, setClientEmail] = useState("");
   const [clientPhone, setClientPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [consent, setConsent] = useState(false);
   const [paymentType, setPaymentType] = useState<"online_full" | "onsite_deposit">("online_full");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -220,6 +222,7 @@ export default function FutsalReserverPage() {
       if (clientName.trim().length < 2) e.clientName = "Nom requis";
       if (!clientEmail.includes("@")) e.clientEmail = "Email invalide";
       if (clientPhone.trim().length < 8) e.clientPhone = "Téléphone invalide";
+      if (!consent) e.consent = "Vous devez accepter les conditions générales de vente";
     }
     if (Object.keys(e).length > 0) { setErrors(e); return; }
     setStep(s => s + 1);
@@ -540,6 +543,8 @@ export default function FutsalReserverPage() {
                   value={notes} onChange={e => setNotes(e.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
               </div>
+
+              <ConsentCheckbox checked={consent} onChange={setConsent} error={errors.consent} />
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" onClick={() => setStep(0)}>

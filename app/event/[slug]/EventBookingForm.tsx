@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { Loader2, AlertCircle } from "lucide-react";
+import { ConsentCheckbox } from "@/components/legal/ConsentCheckbox";
 
 export function EventBookingForm({ slug, unitPrice, maxSeats, accent }: {
   slug: string; unitPrice: number; maxSeats: number; accent: string;
@@ -15,6 +16,8 @@ export function EventBookingForm({ slug, unitPrice, maxSeats, accent }: {
   const [clientPhone, setClientPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const total = unitPrice * seats;
   const cap = Math.max(1, Math.min(maxSeats, 50));
@@ -23,7 +26,8 @@ export function EventBookingForm({ slug, unitPrice, maxSeats, accent }: {
     if (clientName.trim().length < 2) { setError("Nom complet requis"); return; }
     if (!clientEmail.includes("@")) { setError("Email invalide"); return; }
     if (clientPhone.trim().length < 6) { setError("Téléphone invalide"); return; }
-    setLoading(true); setError(null);
+    if (!consent) { setConsentError("Vous devez accepter les conditions générales de vente"); return; }
+    setLoading(true); setError(null); setConsentError(null);
     try {
       const res = await fetch("/api/events/book", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -66,6 +70,8 @@ export function EventBookingForm({ slug, unitPrice, maxSeats, accent }: {
       {error && (
         <p className="text-red-400 text-sm flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{error}</p>
       )}
+
+      <ConsentCheckbox checked={consent} onChange={(v) => { setConsent(v); if (v) setConsentError(null); }} error={consentError} dark />
 
       <Button type="button" size="lg" className="w-full font-bold" onClick={submit} disabled={loading}
         style={{ background: accent, color: "#0a1628" }}>
