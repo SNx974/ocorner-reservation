@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
   });
   const existingHours = new Set(existingSlots.map(s => s.hour));
 
-  // Create only missing slots
+  // Create only missing slots (9h → 22h)
   const toCreate: { hour: number; minute: number; isActive: boolean }[] = [];
-  for (let h = 10; h <= 22; h++) {
+  for (let h = 9; h <= 22; h++) {
     if (!existingHours.has(h)) {
       toCreate.push({ hour: h, minute: targetMinute, isActive: true });
     }

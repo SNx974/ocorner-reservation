@@ -120,7 +120,7 @@ export default function CreneauxPage() {
 
   async function regenerateFutsal(mode?: "hour" | "half") {
     const m = mode ?? slotMode;
-    const label = m === "hour" ? "heures pleines (10h00 → 22h00)" : "demi-heures (10h30 → 22h30)";
+    const label = m === "hour" ? "heures pleines (9h00 → 22h00)" : "demi-heures (9h30 → 22h30)";
     if (!confirm(`Régénérer les créneaux futsal en mode ${label} ?\nLes créneaux non liés à une réservation seront supprimés.`)) return;
     setRegenerating(true);
     const res = await fetch("/api/admin/futsal-slots", { method: "POST", headers, body: JSON.stringify({ mode: m }) });

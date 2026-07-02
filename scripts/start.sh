@@ -29,8 +29,8 @@ async function seed() {
   for (const f of formulas) {
     await p.formula.upsert({ where: { id: f.id }, create: { ...f, isActive: true }, update: {} });
   }
-  // Futsal slots 10h-22h (heures pleines, minute=0)
-  for (let h = 10; h <= 22; h++) {
+  // Futsal slots 9h-22h (heures pleines, minute=0)
+  for (let h = 9; h <= 22; h++) {
     await p.futsalTimeSlot.upsert({
       where: { id: 'futsal_hour_'+h },
       create: { id: 'futsal_hour_'+h, hour: h, minute: 0, isActive: true },

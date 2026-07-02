@@ -19,7 +19,7 @@ export default function FutsalPage() {
           <Image src="/logo-foot.png" alt="Foot à 5" width={420} height={140} style={{ objectFit: "contain", maxWidth: "100%" }} />
         </div>
         <p className="text-white/60 text-lg">
-          3 terrains disponibles · 10h à 22h · À partir de 10 joueurs
+          3 terrains disponibles · 9h à 22h · À partir de 10 joueurs
         </p>
       </div>
 
@@ -61,7 +61,7 @@ export default function FutsalPage() {
         {[
           { icon: <Trophy className="w-6 h-6" />, title: "3 Terrains", desc: "Terrains de qualité professionnelle" },
           { icon: <Users className="w-6 h-6" />, title: "Min. 10 joueurs", desc: "Pour une équipe complète" },
-          { icon: <Calendar className="w-6 h-6" />, title: "10h – 22h", desc: "Créneaux toutes les heures" },
+          { icon: <Calendar className="w-6 h-6" />, title: "9h – 22h", desc: "Créneaux toutes les heures" },
         ].map((c) => (
           <div key={c.title} className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
             <div className="text-blue-300 flex justify-center mb-2">{c.icon}</div>
