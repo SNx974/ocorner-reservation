@@ -6,7 +6,7 @@ import { formatPrice, getStatusLabel, birthdayTimeToHours } from "@/lib/utils";
 import {
   ChevronLeft, ChevronRight, Users, Loader2, RefreshCw,
   Trophy, Phone, Mail, X, Plus, Trash2, CreditCard, Banknote,
-  CheckCircle, Clock, Calendar, CalendarDays, Tag,
+  CheckCircle, Clock, Calendar, CalendarDays, Tag, Pencil, Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { format, addDays, subDays, isToday } from "date-fns";
 import { fr } from "date-fns/locale";
 
-interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean }
+interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean; price?: number | null }
 interface FutsalRes {
   id: string; reference: string; clientName: string; clientPhone: string;
   clientEmail: string; date: string; status: string; totalPrice: number;
@@ -60,6 +60,22 @@ function FutsalModal({
   const { role } = useAdmin();
   const isAdmin = role === "admin";
   const isBdayFoot = r.type === "birthday";
+  const [editMode, setEditMode] = useState(false);
+  const [ed, setEd] = useState({
+    clientName: r.clientName, clientPhone: r.clientPhone, clientEmail: r.clientEmail,
+    playerCount: String(r.playerCount ?? 10), notes: r.notes ?? "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  async function saveEdit() {
+    setSavingEdit(true);
+    await fetch("/api/admin/reservations", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ id: r.id, action: "update_reservation", ...ed }),
+    });
+    setSavingEdit(false); setEditMode(false); onRefresh(); onClose();
+  }
   const cfg = courtConfig[(r.courtNumber ?? 1) - 1] ?? courtConfig[0];
   const remaining = r.totalPrice - (r.depositPaid ? r.depositAmount : 0);
 
@@ -179,8 +195,11 @@ function FutsalModal({
                 {r.fullPaymentPaid ? "✓ Payé" : "En attente"}
               </span>
             </div>
-            {r.adminNotes && (
-              <p className="text-xs text-gray-400 italic pt-1 border-t">{r.adminNotes}</p>
+            {(r.notes || r.adminNotes) && (
+              <div className="pt-1.5 border-t space-y-0.5">
+                {r.notes && <p className="text-xs text-gray-600"><span className="font-semibold text-gray-400">Note :</span> {r.notes}</p>}
+                {r.adminNotes && r.adminNotes !== r.notes && <p className="text-xs text-gray-500 italic">{r.adminNotes}</p>}
+              </div>
             )}
           </div>
 
@@ -261,6 +280,36 @@ function FutsalModal({
               <Mail className="w-4 h-4 text-gray-400 shrink-0" />{r.clientEmail}
             </a>
           </div>
+
+          {/* Edit — admins only */}
+          {isAdmin && !isBdayFoot && (
+            <div className="pt-2 border-t border-gray-100">
+              {!editMode ? (
+                <button onClick={() => setEditMode(true)} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                  <Pencil className="w-4 h-4" /> Modifier la réservation
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Modifier</p>
+                  <Input placeholder="Nom" value={ed.clientName} onChange={e => setEd(v => ({ ...v, clientName: e.target.value }))} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Téléphone" value={ed.clientPhone} onChange={e => setEd(v => ({ ...v, clientPhone: e.target.value }))} />
+                    <Input type="number" min={1} placeholder="Joueurs" value={ed.playerCount} onChange={e => setEd(v => ({ ...v, playerCount: e.target.value }))} />
+                  </div>
+                  <Input type="email" placeholder="Email" value={ed.clientEmail} onChange={e => setEd(v => ({ ...v, clientEmail: e.target.value }))} />
+                  <Input placeholder="Note" value={ed.notes} onChange={e => setEd(v => ({ ...v, notes: e.target.value }))} />
+                  <p className="text-[11px] text-gray-400">Pour changer la date / le créneau, utilisez « Décaler ce créneau ».</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditMode(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">Annuler</button>
+                    <button onClick={saveEdit} disabled={savingEdit}
+                      className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Enregistrer
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Payment actions */}
           {isAdmin && !r.fullPaymentPaid && r.status === "confirmed" && (
@@ -412,7 +461,8 @@ function QuickAddModal({
   const slotPrice = (h: number) => (h >= prices.peakHour ? prices.peak : prices.offpeak);
   const total = selectedSlotIds.reduce((sum, id) => {
     const s = futsalSlots.find(fs => fs.id === id);
-    return sum + (s ? slotPrice(s.hour) : 0);
+    if (!s) return sum;
+    return sum + (s.price != null ? s.price : slotPrice(s.hour));
   }, 0);
 
   // Default the encashed amount to the running total until the admin edits it

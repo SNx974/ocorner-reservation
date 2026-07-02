@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormulaCard } from "./FormulaCard";
@@ -257,7 +257,10 @@ export function BookingForm() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const submittingRef = useRef(false);
   async function submitReservation() {
+    if (submittingRef.current) return; // guard against double submit
+    submittingRef.current = true;
     setLoading(true);
     setApiError(null);
     try {
@@ -306,6 +309,7 @@ export function BookingForm() {
       setApiError(e instanceof Error ? e.message : "Erreur inattendue. Veuillez réessayer.");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   }
 

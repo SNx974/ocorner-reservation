@@ -94,6 +94,34 @@ export async function POST(req: NextRequest) {
     const timeSlot = await prisma.timeSlot.findUnique({ where: { id: data.timeSlotId } });
     if (!timeSlot) return NextResponse.json({ error: "Créneau introuvable" }, { status: 404 });
 
+    // Idempotency: if an identical reservation was just created (double-submit),
+    // return it instead of creating a duplicate.
+    const recentDup = await prisma.reservation.findFirst({
+      where: {
+        type: "birthday",
+        clientEmail: data.clientEmail,
+        formulaId: data.formulaId,
+        timeSlotId: data.timeSlotId,
+        date: new Date(data.date),
+        childrenCount: data.childrenCount,
+        status: { notIn: ["cancelled", "expired"] },
+        createdAt: { gte: new Date(Date.now() - 30_000) },
+      },
+      orderBy: { createdAt: "desc" },
+      include: { formula: true, timeSlot: true },
+    });
+    if (recentDup) {
+      let dupCheckout: string | undefined;
+      if (recentDup.stripeCheckoutSessionId && !IS_DEMO) {
+        try {
+          const { stripe } = await import("@/lib/stripe");
+          const s = await stripe.checkout.sessions.retrieve(recentDup.stripeCheckoutSessionId);
+          dupCheckout = s.url ?? undefined;
+        } catch { /* session may be gone; fall through */ }
+      }
+      return NextResponse.json({ reservation: recentDup, checkoutUrl: dupCheckout });
+    }
+
     const settings = await prisma.settings.findMany();
     const getSetting = (key: string, fallback: string) =>
       settings.find((s) => s.key === key)?.value ?? fallback;

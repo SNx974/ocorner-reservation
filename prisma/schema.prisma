@@ -143,6 +143,7 @@ model FutsalTimeSlot {
   id           String        @id @default(cuid())
   hour         Int           // 10 to 22
   minute       Int           @default(0)  // 0 or 30
+  price        Float?        // per-slot price; null = fall back to peak/off-peak setting
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   reservations Reservation[]

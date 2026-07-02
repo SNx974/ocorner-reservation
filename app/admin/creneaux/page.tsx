@@ -8,7 +8,7 @@ import { Clock, Plus, Trash2, ToggleLeft, ToggleRight, Trophy, RefreshCw, Loader
 import { cn } from "@/lib/utils";
 
 interface BdaySlot { id: string; time: string; isActive: boolean; }
-interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean; }
+interface FutsalSlot { id: string; hour: number; minute: number; isActive: boolean; price?: number | null; }
 interface ClosedDate { id: string; date: string; label: string | null; type: string; }
 interface VacationPeriod { id: string; label: string; startDate: string; endDate: string; }
 
@@ -110,6 +110,11 @@ export default function CreneauxPage() {
 
   async function toggleFutsal(s: FutsalSlot) {
     await fetch("/api/admin/futsal-slots", { method: "PATCH", headers, body: JSON.stringify({ id: s.id, isActive: !s.isActive }) });
+    load();
+  }
+
+  async function saveSlotPrice(id: string, value: string) {
+    await fetch("/api/admin/futsal-slots", { method: "PATCH", headers, body: JSON.stringify({ id, price: value.trim() === "" ? null : value }) });
     load();
   }
 
@@ -446,26 +451,32 @@ export default function CreneauxPage() {
                     {visible.map(s => {
                       const isPeak = s.hour >= peakHour;
                       const label = slotMode === "hour" ? `${s.hour}h00` : `${s.hour}h30`;
+                      const fallback = isPeak ? peakPrice : offpeakPrice;
                       return (
-                        <button key={s.id} type="button" onClick={() => toggleFutsal(s)}
-                          className={cn(
-                            "flex items-center justify-between px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all",
-                            s.isActive
-                              ? isPeak
-                                ? "border-orange-500 bg-orange-500 text-white"
-                                : "border-blue-500 bg-blue-500 text-white"
-                              : "border-gray-200 bg-gray-50 text-gray-400 hover:border-gray-300"
-                          )}>
-                          <span>{label}</span>
-                          <span className="text-xs font-normal opacity-80">
-                            {s.isActive ? `${isPeak ? peakPrice : offpeakPrice}€` : "—"}
-                          </span>
-                        </button>
+                        <div key={s.id} className={cn(
+                          "rounded-xl border-2 p-2 transition-all",
+                          s.isActive ? (isPeak ? "border-orange-300" : "border-blue-300") : "border-gray-200 bg-gray-50"
+                        )}>
+                          <button type="button" onClick={() => toggleFutsal(s)}
+                            className={cn("w-full flex items-center justify-between text-sm font-semibold",
+                              s.isActive ? (isPeak ? "text-orange-600" : "text-blue-600") : "text-gray-400")}>
+                            <span>{label}</span>
+                            <span className="text-[10px] font-medium">{s.isActive ? "Actif" : "Inactif"}</span>
+                          </button>
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <input type="number" min="0" step="1"
+                              defaultValue={s.price != null ? String(s.price) : ""}
+                              placeholder={String(fallback)}
+                              onBlur={e => { if (e.target.value !== (s.price != null ? String(s.price) : "")) saveSlotPrice(s.id, e.target.value); }}
+                              className="w-full h-8 rounded-lg border border-gray-200 px-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                            <span className="text-xs text-gray-400">€</span>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
                   <p className="text-xs text-gray-400 mt-3">
-                    Pour modifier les prix → <strong>Paramètres → Tarification Foot à 5</strong>
+                    Prix par créneau : laissez vide pour utiliser le tarif par défaut (creux/pleine des <strong>Paramètres</strong>). Le placeholder montre le tarif par défaut.
                   </p>
                 </>
               );

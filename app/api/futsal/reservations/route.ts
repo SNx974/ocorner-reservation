@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
       if (s.hour < dayConfig.start || s.hour > dayConfig.end) {
         return NextResponse.json({ error: `Le créneau ${s.hour}h n'est pas disponible (ouverture de ${dayConfig.start}h à ${dayConfig.end}h).` }, { status: 400 });
       }
-      basePrice += s.hour >= peakHour ? peakPrice : offpeakPrice;
+      basePrice += (s as { price: number | null }).price != null ? (s as { price: number }).price : (s.hour >= peakHour ? peakPrice : offpeakPrice);
     }
 
     // Check court availability across all selected slots (legacy + cart rows)

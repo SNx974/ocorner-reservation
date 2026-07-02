@@ -29,6 +29,11 @@ export async function GET(req: NextRequest) {
   const getSetting = (key: string, fallback: string) =>
     settings.find((s) => s.key === key)?.value ?? fallback;
   const maxCourts = parseInt(getSetting("futsal_max_courts", "3"));
+  const offpeakPrice = parseFloat(getSetting("futsal_price_offpeak", getSetting("futsal_court_price", "90")));
+  const peakPrice = parseFloat(getSetting("futsal_price_peak", getSetting("futsal_court_price", "110")));
+  const peakHour = parseInt(getSetting("futsal_price_peak_from", "17"));
+  const slotPrice = (s: { hour: number; price: number | null }) =>
+    s.price != null ? s.price : (s.hour >= peakHour ? peakPrice : offpeakPrice);
 
   // Determine if date is in a vacation period
   const dayDate = new Date(date + "T12:00:00Z");
@@ -152,6 +157,7 @@ export async function GET(req: NextRequest) {
       availableCourts,
       available: availableCourts.length > 0,
       birthdayFootBlocked: birthdayFootBlockedHours.has(slot.hour),
+      price: slotPrice(slot),
     };
   });
 

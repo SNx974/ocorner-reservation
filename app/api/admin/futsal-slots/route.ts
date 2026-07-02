@@ -19,8 +19,13 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   if (!auth(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, isActive } = await req.json();
-  const slot = await prisma.futsalTimeSlot.update({ where: { id }, data: { isActive } });
+  const body = await req.json();
+  const data: Record<string, unknown> = {};
+  if (body.isActive !== undefined) data.isActive = body.isActive;
+  if (body.price !== undefined) {
+    data.price = body.price === "" || body.price === null ? null : parseFloat(body.price);
+  }
+  const slot = await prisma.futsalTimeSlot.update({ where: { id: body.id }, data });
   return NextResponse.json(slot);
 }
 

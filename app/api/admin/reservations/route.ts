@@ -192,8 +192,9 @@ export async function POST(req: NextRequest) {
     const slotById = new Map(slotRecords.map(s => [s.id, s]));
     let totalPrice = 0;
     for (const c of cart) {
-      const h = slotById.get(c.futsalTimeSlotId)?.hour ?? 10;
-      totalPrice += h >= peakHour ? peakPrice : offpeakPrice;
+      const s = slotById.get(c.futsalTimeSlotId);
+      const h = s?.hour ?? 10;
+      totalPrice += s?.price != null ? s.price : (h >= peakHour ? peakPrice : offpeakPrice);
     }
 
     const paid = amountPaid !== undefined && amountPaid !== "" ? parseFloat(amountPaid) : totalPrice;
@@ -295,6 +296,17 @@ export async function PATCH(req: NextRequest) {
     case "add_note":
       updateData = { adminNotes: notes };
       break;
+    case "update_reservation": {
+      const d: Record<string, unknown> = {};
+      if (body.clientName !== undefined) d.clientName = String(body.clientName);
+      if (body.clientPhone !== undefined) d.clientPhone = String(body.clientPhone);
+      if (body.clientEmail !== undefined) d.clientEmail = String(body.clientEmail);
+      if (body.playerCount !== undefined) d.playerCount = parseInt(String(body.playerCount));
+      if (body.childrenCount !== undefined) d.childrenCount = parseInt(String(body.childrenCount));
+      if (body.notes !== undefined) d.notes = body.notes || null;
+      updateData = d;
+      break;
+    }
     case "send_confirmation": {
       if (!reservation.clientEmail || !reservation.clientEmail.includes("@")) {
         return NextResponse.json({ error: "Aucune adresse email valide pour cette réservation" }, { status: 400 });

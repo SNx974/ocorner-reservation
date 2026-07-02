@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ const STEPS = ["Créneau", "Contact", "Paiement"];
 interface FutsalSlot {
   id: string; hour: number; minute: number; label: string;
   totalCourts: number; availableCourts: number[]; available: boolean;
+  price?: number;
 }
 
 interface CartItem {
@@ -187,7 +188,8 @@ export default function FutsalReserverPage() {
     setCart(prev => {
       const exists = prev.some(i => i.slotId === slot.id && i.court === court);
       if (exists) return prev.filter(i => !(i.slotId === slot.id && i.court === court));
-      return [...prev, { slotId: slot.id, court, hour: slot.hour, minute: slot.minute, label: slot.label, price: slotUnitPrice(slot.hour) }];
+      const unit = slot.price != null ? slot.price : slotUnitPrice(slot.hour);
+      return [...prev, { slotId: slot.id, court, hour: slot.hour, minute: slot.minute, label: slot.label, price: unit }];
     });
   }
   function removeCartItem(slotId: string, court: number) {
@@ -229,7 +231,10 @@ export default function FutsalReserverPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const submittingRef = useRef(false);
   async function submitReservation() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true); setApiError(null);
     try {
       const res = await fetch("/api/futsal/reservations", {
@@ -265,6 +270,7 @@ export default function FutsalReserverPage() {
       setLoading(false);
     }
     setLoading(false);
+    submittingRef.current = false;
   }
 
   async function simulateDemoPayment() {
@@ -409,7 +415,7 @@ export default function FutsalReserverPage() {
                     <div className="space-y-1.5">
                       {slots.map(slot => {
                         const isPeak = slot.hour >= peakHour;
-                        const slotPrice = isPeak ? peakPrice : offpeakPrice;
+                        const slotPrice = slot.price != null ? slot.price : (isPeak ? peakPrice : offpeakPrice);
                         return (
                           <div key={slot.id}
                             className={cn(
