@@ -436,6 +436,7 @@ function QuickAddModal({
   const [amountPaid, setAmountPaid] = useState("");
   const [amountTouched, setAmountTouched] = useState(false);
   const [prices, setPrices] = useState({ offpeak: 90, peak: 110, peakHour: 17 });
+  const [availPrice, setAvailPrice] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -443,7 +444,8 @@ function QuickAddModal({
     Promise.all([
       fetch("/api/admin/futsal-slots", { headers: { "x-admin-token": token } }).then(r => r.json()),
       fetch("/api/admin/settings", { headers: { "x-admin-token": token } }).then(r => r.json()),
-    ]).then(([slotsRaw, settings]) => {
+      fetch(`/api/futsal/availability?date=${date}`).then(r => r.json()).catch(() => null),
+    ]).then(([slotsRaw, settings, avail]) => {
       const slots: FutsalSlot[] = (Array.isArray(slotsRaw) ? slotsRaw : [])
         .filter((s: FutsalSlot) => s.isActive)
         .sort((a: FutsalSlot, b: FutsalSlot) => a.hour - b.hour || a.minute - b.minute);
@@ -455,14 +457,21 @@ function QuickAddModal({
         peak: parseFloat(settings?.futsal_price_peak ?? settings?.futsal_court_price ?? "110"),
         peakHour: parseInt(settings?.futsal_price_peak_from ?? "17"),
       });
+      // Effective per-slot price from the same source the client pays
+      const map: Record<string, number> = {};
+      for (const s of (avail?.slots ?? [])) if (s.price != null) map[s.id] = s.price;
+      setAvailPrice(map);
     });
   }, [date, hour, minute, token]);
 
   const slotPrice = (h: number) => (h >= prices.peakHour ? prices.peak : prices.offpeak);
+  // Priority: server-computed effective price (avail) → per-slot price → peak/off-peak
+  const effectivePrice = (s: FutsalSlot) =>
+    availPrice[s.id] != null ? availPrice[s.id] : (s.price != null ? s.price : slotPrice(s.hour));
   const perSlotSum = selectedSlotIds.reduce((sum, id) => {
     const s = futsalSlots.find(fs => fs.id === id);
     if (!s) return sum;
-    return sum + (s.price != null ? s.price : slotPrice(s.hour));
+    return sum + effectivePrice(s);
   }, 0);
   // One line per (slot × court): total = sum of slot prices × number of courts
   const total = perSlotSum * Math.max(1, selectedCourts.length);
@@ -552,10 +561,11 @@ function QuickAddModal({
                 return (
                   <button key={s.id} type="button" onClick={() => toggleSlot(s.id)}
                     className={cn(
-                      "py-1.5 rounded-lg border-2 text-xs font-bold transition-all",
+                      "py-1 rounded-lg border-2 text-xs font-bold transition-all flex flex-col items-center",
                       selected ? "border-blue-600 bg-blue-600 text-white" : "border-gray-200 text-gray-600 hover:border-blue-300"
                     )}>
-                    {selected ? "✓ " : ""}{slotLabel(s.hour, s.minute)}
+                    <span>{selected ? "✓ " : ""}{slotLabel(s.hour, s.minute)}</span>
+                    <span className="text-[9px] font-normal opacity-75">{formatPrice(effectivePrice(s))}</span>
                   </button>
                 );
               })}
