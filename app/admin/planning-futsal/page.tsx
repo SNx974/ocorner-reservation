@@ -426,7 +426,7 @@ function QuickAddModal({
 }: { token: string; date: string; hour: number; minute: number; court: number; onClose: () => void; onCreated: () => void }) {
   const [futsalSlots, setFutsalSlots] = useState<FutsalSlot[]>([]);
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([]);
-  const [court, setCourt] = useState(defaultCourt);
+  const [selectedCourts, setSelectedCourts] = useState<number[]>([defaultCourt]);
   const [playerCount, setPlayerCount] = useState(10);
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -459,11 +459,14 @@ function QuickAddModal({
   }, [date, hour, minute, token]);
 
   const slotPrice = (h: number) => (h >= prices.peakHour ? prices.peak : prices.offpeak);
-  const total = selectedSlotIds.reduce((sum, id) => {
+  const perSlotSum = selectedSlotIds.reduce((sum, id) => {
     const s = futsalSlots.find(fs => fs.id === id);
     if (!s) return sum;
     return sum + (s.price != null ? s.price : slotPrice(s.hour));
   }, 0);
+  // One line per (slot × court): total = sum of slot prices × number of courts
+  const total = perSlotSum * Math.max(1, selectedCourts.length);
+  const lineCount = selectedSlotIds.length * selectedCourts.length;
 
   // Default the encashed amount to the running total until the admin edits it
   useEffect(() => {
@@ -473,17 +476,22 @@ function QuickAddModal({
   function toggleSlot(id: string) {
     setSelectedSlotIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
+  function toggleCourt(c: number) {
+    setSelectedCourts(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+  }
 
   async function submit() {
     if (!clientName.trim()) { setError("Nom du client requis"); return; }
     if (selectedSlotIds.length === 0) { setError("Sélectionnez au moins un créneau"); return; }
+    if (selectedCourts.length === 0) { setError("Sélectionnez au moins un terrain"); return; }
     setLoading(true); setError("");
+    const slots = selectedSlotIds.flatMap(id => selectedCourts.map(c => ({ futsalTimeSlotId: id, courtNumber: c })));
     const res = await fetch("/api/admin/reservations", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-token": token },
       body: JSON.stringify({
         type: "futsal", clientName, clientEmail, clientPhone,
-        slots: selectedSlotIds.map(id => ({ futsalTimeSlotId: id, courtNumber: court })),
+        slots,
         date, playerCount,
         notes,
         paymentMethod: paymentMethod !== "none" ? paymentMethod : undefined,
@@ -509,21 +517,24 @@ function QuickAddModal({
           <button onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
         </div>
         <div className="space-y-3">
-          {/* Terrain */}
+          {/* Terrains (multi-sélection) */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Terrain</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">
+              Terrains <span className="font-normal text-gray-400">— plusieurs possibles</span>
+            </label>
             <div className="flex gap-1.5">
               {COURTS.map(c => {
                 const cfg = courtConfig[c - 1];
+                const selected = selectedCourts.includes(c);
                 return (
-                  <button key={c} type="button" onClick={() => setCourt(c)}
+                  <button key={c} type="button" onClick={() => toggleCourt(c)}
                     className={cn(
                       "flex-1 py-2 rounded-lg border-2 text-sm font-bold transition-all",
-                      court === c
+                      selected
                         ? cn(cfg.light, cfg.text, cfg.color)
                         : "border-gray-200 text-gray-500 hover:border-gray-300"
                     )}>
-                    T{c}
+                    {selected ? "✓ " : ""}T{c}
                   </button>
                 );
               })}
@@ -549,9 +560,9 @@ function QuickAddModal({
                 );
               })}
             </div>
-            {selectedSlotIds.length > 0 && (
+            {selectedSlotIds.length > 0 && selectedCourts.length > 0 && (
               <p className="text-xs text-gray-500 mt-1.5">
-                {selectedSlotIds.length} créneau{selectedSlotIds.length > 1 ? "x" : ""} · Terrain {court} · <span className="font-bold text-blue-700">{formatPrice(total)}</span>
+                {selectedSlotIds.length} créneau{selectedSlotIds.length > 1 ? "x" : ""} × {selectedCourts.length} terrain{selectedCourts.length > 1 ? "s" : ""} = {lineCount} réservation{lineCount > 1 ? "s" : ""} · <span className="font-bold text-blue-700">{formatPrice(total)}</span>
               </p>
             )}
           </div>
